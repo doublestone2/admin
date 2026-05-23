@@ -201,27 +201,34 @@ export function DbDetailEditor({
   }
 
   async function handleDeleteMemo(noteId: string) {
-    if (!confirm("메모를 삭제할까요?")) return;
+  if (!confirm("메모를 삭제할까요?")) return;
 
-    setPending(true);
-    setMsg(null);
+  setPending(true);
+  setMsg(null);
 
-    const response = await fetch(`/api/db-notes/${noteId}`, {
-      method: "DELETE",
-    });
+  const response = await fetch("/api/db-notes/delete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      id: noteId,
+    }),
+  });
 
-    const result = await response.json();
-    setPending(false);
+  const result = await response.json();
 
-    if (!result.ok) {
-      setMsg(result.error || "메모 삭제 중 오류가 발생했습니다.");
-      return;
-    }
+  setPending(false);
 
-    setLocalNotes((prev) => prev.filter((note) => note.id !== noteId));
-    setMsg("메모가 삭제되었습니다.");
-    router.refresh();
+  if (!result.ok) {
+    setMsg(result.error || "메모 삭제 중 오류가 발생했습니다.");
+    return;
   }
+
+  setLocalNotes((prev) => prev.filter((note) => note.id !== noteId));
+  setMsg("메모가 삭제되었습니다.");
+  router.refresh();
+}
 
   return (
     <div className="space-y-6">
