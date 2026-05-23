@@ -1,0 +1,5 @@
+import { PageHeader } from "@/components/common/PageHeader";
+import { getContractRows } from "@/lib/data/contracts";
+import { formatMoney } from "@/lib/utils/format";
+export const dynamic="force-dynamic";
+export default async function Settlements(){const {rows,stats}=await getContractRows(); const by:any={}; rows.forEach(r=>{const c=r.lead_contracts?.[0]; const name=c?.primary_manager_name||"미지정"; by[name]=(by[name]||0)+Number(c?.fee_amount||0);}); return <><PageHeader title="정산관리" description="교통사고 계약현황 기반 매출을 확인합니다."/><div className="grid gap-4 md:grid-cols-4">{[["계약수",stats.contractCount],["종결수",stats.closedCount],["총 합의금",formatMoney(stats.totalSettlement)],["총 수수료",formatMoney(stats.totalFee)]].map(([k,v])=><div className="card p-4" key={k}><p className="text-sm text-slate-400">{k}</p><p className="mt-2 text-2xl font-black text-white">{v}</p></div>)}</div><section className="card mt-6 p-5"><h2 className="font-black text-white">1차 담당자별 수수료</h2><div className="mt-3 divide-y divide-slate-800">{Object.entries(by).map(([k,v])=><div className="flex justify-between py-3" key={k}><span>{k}</span><b>{formatMoney(v as number)}</b></div>)}</div></section></>}
