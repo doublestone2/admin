@@ -4,7 +4,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 function toNumber(value: unknown) {
-  const n = Number(value || 0);
+  const raw = String(value || "0").replaceAll(",", "");
+  const n = Number(raw);
   return Number.isNaN(n) ? 0 : n;
 }
 
@@ -29,7 +30,10 @@ export async function GET(request: Request) {
     const { data, error } = await query;
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true, rows: data || [] });
@@ -37,7 +41,10 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "정산 조회 중 오류가 발생했습니다.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "정산 조회 중 오류가 발생했습니다.",
       },
       { status: 500 }
     );
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
       phone: String(body.phone || ""),
       staff_name: String(body.staff_name || ""),
       contract_date: body.contract_date || null,
-      settlement_date: body.settlement_date || null,
+      settlement_date: body.settlement_date,
       status: String(body.status || "종결"),
       final_settlement_amount: toNumber(body.final_settlement_amount),
       fee_amount: toNumber(body.fee_amount),
@@ -65,7 +72,10 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("settlements").insert(payload);
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });
@@ -73,7 +83,10 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "정산 등록 중 오류가 발생했습니다.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "정산 등록 중 오류가 발생했습니다.",
       },
       { status: 500 }
     );

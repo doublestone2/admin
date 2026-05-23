@@ -4,7 +4,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 function toNumber(value: unknown) {
-  const n = Number(value || 0);
+  const raw = String(value || "0").replaceAll(",", "");
+  const n = Number(raw);
   return Number.isNaN(n) ? 0 : n;
 }
 
@@ -22,7 +23,7 @@ export async function PATCH(
       phone: String(body.phone || ""),
       staff_name: String(body.staff_name || ""),
       contract_date: body.contract_date || null,
-      settlement_date: body.settlement_date || null,
+      settlement_date: body.settlement_date,
       status: String(body.status || "종결"),
       final_settlement_amount: toNumber(body.final_settlement_amount),
       fee_amount: toNumber(body.fee_amount),
@@ -36,7 +37,10 @@ export async function PATCH(
       .eq("id", params.id);
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });
@@ -44,7 +48,10 @@ export async function PATCH(
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "정산 수정 중 오류가 발생했습니다.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "정산 수정 중 오류가 발생했습니다.",
       },
       { status: 500 }
     );
@@ -66,7 +73,10 @@ export async function DELETE(
       .eq("id", params.id);
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });
@@ -74,7 +84,10 @@ export async function DELETE(
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "정산 삭제 중 오류가 발생했습니다.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "정산 삭제 중 오류가 발생했습니다.",
       },
       { status: 500 }
     );

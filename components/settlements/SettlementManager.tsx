@@ -65,18 +65,20 @@ function money(value: number) {
   return `${Math.round(Number(value || 0)).toLocaleString("ko-KR")}원`;
 }
 
-const emptyForm: FormState = {
-  case_type: "교통사고",
-  client_name: "",
-  phone: "",
-  staff_name: "",
-  contract_date: "",
-  settlement_date: getKstToday(),
-  status: "종결",
-  final_settlement_amount: "",
-  fee_amount: "",
-  memo: "",
-};
+function makeEmptyForm(): FormState {
+  return {
+    case_type: "교통사고",
+    client_name: "",
+    phone: "",
+    staff_name: "",
+    contract_date: "",
+    settlement_date: getKstToday(),
+    status: "종결",
+    final_settlement_amount: "",
+    fee_amount: "",
+    memo: "",
+  };
+}
 
 export function SettlementManager() {
   const monthRange = getKstMonthRange();
@@ -84,7 +86,7 @@ export function SettlementManager() {
   const [startDate, setStartDate] = useState(monthRange.start);
   const [endDate, setEndDate] = useState(monthRange.end);
   const [rows, setRows] = useState<SettlementRow[]>([]);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<FormState>(makeEmptyForm());
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -150,7 +152,9 @@ export function SettlementManager() {
 
       const item = staffMap.get(name)!;
 
-      if (row.status !== "환불") item.contract_count += 1;
+      if (row.status !== "환불") {
+        item.contract_count += 1;
+      }
 
       if (row.status === "종결") {
         item.closed_count += 1;
@@ -194,6 +198,21 @@ export function SettlementManager() {
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
+    if (!form.client_name.trim()) {
+      setMsg("고객명을 입력해주세요.");
+      return;
+    }
+
+    if (!form.staff_name.trim()) {
+      setMsg("담당자를 입력해주세요.");
+      return;
+    }
+
+    if (!form.settlement_date) {
+      setMsg("종결일 또는 정산일을 선택해주세요.");
+      return;
+    }
+
     setPending(true);
     setMsg(null);
 
@@ -218,7 +237,7 @@ export function SettlementManager() {
     }
 
     setMsg(form.id ? "정산 내역이 수정되었습니다." : "정산 내역이 추가되었습니다.");
-    setForm(emptyForm);
+    setForm(makeEmptyForm());
     await loadRows();
   }
 
@@ -272,11 +291,17 @@ export function SettlementManager() {
             onChange={(e) => setEndDate(e.target.value)}
           />
 
-          <button className="btn btn-primary" onClick={loadRows} disabled={pending}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={loadRows}
+            disabled={pending}
+          >
             조회
           </button>
 
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={() => {
               const range = getKstMonthRange();
@@ -392,7 +417,9 @@ export function SettlementManager() {
             className="input"
             placeholder="총 합의금"
             value={form.final_settlement_amount}
-            onChange={(e) => updateForm("final_settlement_amount", e.target.value)}
+            onChange={(e) =>
+              updateForm("final_settlement_amount", e.target.value)
+            }
           />
 
           <input
@@ -414,7 +441,7 @@ export function SettlementManager() {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setForm(emptyForm)}
+                onClick={() => setForm(makeEmptyForm())}
               >
                 수정 취소
               </button>
@@ -450,7 +477,9 @@ export function SettlementManager() {
                   </td>
                   <td className="p-3 text-right">{staff.contract_count}건</td>
                   <td className="p-3 text-right">{staff.closed_count}건</td>
-                  <td className="p-3 text-right">{money(staff.total_settlement)}</td>
+                  <td className="p-3 text-right">
+                    {money(staff.total_settlement)}
+                  </td>
                   <td className="p-3 text-right">{money(staff.total_fee)}</td>
                 </tr>
               ))}
@@ -477,6 +506,7 @@ export function SettlementManager() {
                 <th className="p-3 text-left">종결일</th>
                 <th className="p-3 text-left">구분</th>
                 <th className="p-3 text-left">고객명</th>
+                <th className="p-3 text-left">연락처</th>
                 <th className="p-3 text-left">담당자</th>
                 <th className="p-3 text-right">합의금</th>
                 <th className="p-3 text-right">수수료</th>
@@ -490,15 +520,23 @@ export function SettlementManager() {
                 <tr key={row.id}>
                   <td className="p-3">{row.settlement_date}</td>
                   <td className="p-3">{row.case_type}</td>
-                  <td className="p-3 font-semibold text-white">{row.client_name}</td>
+                  <td className="p-3 font-semibold text-white">
+                    {row.client_name}
+                  </td>
+                  <td className="p-3">{row.phone || "-"}</td>
                   <td className="p-3">{row.staff_name || "-"}</td>
-                  <td className="p-3 text-right">{money(row.final_settlement_amount)}</td>
+                  <td className="p-3 text-right">
+                    {money(row.final_settlement_amount)}
+                  </td>
                   <td className="p-3 text-right">{money(row.fee_amount)}</td>
                   <td className="max-w-xs truncate p-3 text-slate-400">
                     {row.memo || "-"}
                   </td>
                   <td className="p-3 text-right">
-                    <button className="btn btn-secondary mr-2" onClick={() => startEdit(row)}>
+                    <button
+                      className="btn btn-secondary mr-2"
+                      onClick={() => startEdit(row)}
+                    >
                       수정
                     </button>
                     <button className="btn btn-danger" onClick={() => remove(row.id)}>
@@ -510,7 +548,7 @@ export function SettlementManager() {
 
               {summary.closedRows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     종결된 정산 내역이 없습니다.
                   </td>
                 </tr>
