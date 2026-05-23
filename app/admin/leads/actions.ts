@@ -131,6 +131,35 @@ export async function upsertLeadNoteAction(formData: FormData) {
   return { ok: true };
 }
 
+export async function deleteLeadNoteAction(formData: FormData) {
+  await requireAuth();
+
+  const noteId = cleanText(formData.get("note_id"));
+  const leadId = cleanText(formData.get("lead_id"));
+
+  if (!noteId || !leadId) {
+    return { ok: false, error: "삭제할 메모 정보가 없습니다." };
+  }
+
+  const supabase = createSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("lead_notes")
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", noteId)
+    .eq("lead_id", leadId);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${leadId}`);
+
+  return { ok: true };
+}
+
 export async function deleteLeadAction(formData: FormData) {
   await requireAdmin();
 

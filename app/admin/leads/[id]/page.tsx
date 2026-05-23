@@ -11,6 +11,7 @@ import { getDbFiles } from "@/lib/data/files";
 import { formatKSTDateTime } from "@/lib/utils/date";
 import {
   upsertLeadNoteAction,
+  deleteLeadNoteAction,
   updateLeadAction,
   deleteLeadAction,
 } from "../actions";
@@ -56,12 +57,17 @@ export default async function LeadDetail({
     await upsertLeadNoteAction(formData);
   }
 
+  async function handleDeleteLeadNote(formData: FormData): Promise<void> {
+    "use server";
+    await deleteLeadNoteAction(formData);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <Link href="/admin/leads" className="text-sm text-blue-400">
-            ← 목록으로
+            목록으로
           </Link>
 
           <h1 className="mt-2 text-2xl font-black text-white">
@@ -123,7 +129,7 @@ export default async function LeadDetail({
             className="input"
             name="insurance_company"
             defaultValue={lead.insurance_company || ""}
-            placeholder="상대보험사"
+            placeholder="상대 보험사"
           />
 
           <select className="input" name="status" defaultValue={lead.status}>
@@ -183,7 +189,7 @@ export default async function LeadDetail({
           <textarea
             className="input min-h-24"
             name="content"
-            placeholder="메모를 입력하세요"
+            placeholder="메모를 입력하세요."
           />
 
           <button className="btn btn-primary" type="submit">
@@ -203,7 +209,21 @@ export default async function LeadDetail({
               key={note.id}
               className="rounded-xl border border-slate-800 bg-slate-950 p-4"
             >
-              <p className="whitespace-pre-wrap text-sm">{note.content}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="whitespace-pre-wrap text-sm">{note.content}</p>
+
+                <form action={handleDeleteLeadNote}>
+                  <input type="hidden" name="note_id" value={note.id} />
+                  <input type="hidden" name="lead_id" value={lead.id} />
+
+                  <button
+                    className="rounded-lg border border-red-500/40 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10"
+                    type="submit"
+                  >
+                    삭제
+                  </button>
+                </form>
+              </div>
 
               <p className="mt-2 text-xs text-slate-500">
                 {note.profiles?.name || "-"} · 작성{" "}
