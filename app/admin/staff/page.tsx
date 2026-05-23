@@ -3,17 +3,19 @@ import { requireAdmin } from "@/lib/auth/get-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createStaffAction, updateStaffAction } from "./actions";
 import { formatKSTDateTime } from "@/lib/utils/date";
+import { StaffDeleteButton } from "@/components/staff/StaffDeleteButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function StaffPage() {
-  await requireAdmin();
+  const currentProfile = await requireAdmin();
 
   const supabase = createSupabaseServerClient();
 
   const { data } = await supabase
     .from("profiles")
     .select("*")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   async function handleCreateStaff(formData: FormData): Promise<void> {
@@ -71,7 +73,7 @@ export default async function StaffPage() {
             <form
               action={handleUpdateStaff}
               key={profile.id}
-              className="grid gap-2 py-3 md:grid-cols-6 md:items-center"
+              className="grid gap-2 py-3 md:grid-cols-7 md:items-center"
             >
               <input type="hidden" name="id" value={profile.id} />
 
@@ -106,8 +108,22 @@ export default async function StaffPage() {
               <button className="btn btn-secondary" type="submit">
                 저장
               </button>
+
+              <div className="flex justify-end">
+                {profile.id === currentProfile.id ? (
+                  <span className="text-xs text-slate-500">본인 계정</span>
+                ) : (
+                  <StaffDeleteButton id={profile.id} />
+                )}
+              </div>
             </form>
           ))}
+
+          {(data || []).length === 0 && (
+            <p className="py-6 text-center text-sm text-slate-500">
+              등록된 직원이 없습니다.
+            </p>
+          )}
         </div>
       </section>
     </>
