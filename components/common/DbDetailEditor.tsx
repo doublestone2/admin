@@ -190,6 +190,28 @@ export function DbDetailEditor({
     router.refresh();
   }
 
+  async function handleDeleteMemo(noteId: string) {
+    if (!confirm("메모를 삭제할까요?")) return;
+
+    setPending(true);
+    setMsg(null);
+
+    const response = await fetch(`/api/db-notes/${noteId}`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+    setPending(false);
+
+    if (!result.ok) {
+      setMsg(result.error || "메모 삭제 중 오류가 발생했습니다.");
+      return;
+    }
+
+    setMsg("메모가 삭제되었습니다.");
+    router.refresh();
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -305,11 +327,25 @@ export function DbDetailEditor({
               key={note.id}
               className="rounded-xl border border-slate-800 bg-slate-950 p-4"
             >
-              <p className="whitespace-pre-wrap text-sm">{note.content}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="whitespace-pre-wrap text-sm">{note.content}</p>
 
-              <p className="mt-2 text-xs text-slate-500">
-                {note.created_by_name || "-"} · 작성 {formatDate(note.created_at)}
-              </p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {note.created_by_name || "-"} · 작성{" "}
+                    {formatDate(note.created_at)}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-danger shrink-0"
+                  onClick={() => handleDeleteMemo(note.id)}
+                  disabled={pending}
+                >
+                  삭제
+                </button>
+              </div>
             </div>
           ))}
         </div>
