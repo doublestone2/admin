@@ -1,11 +1,7 @@
 "use client";
 
-import { FormEvent, useRef, useState, useTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  deleteDbFileAction,
-  uploadDbFileAction,
-} from "@/app/admin/files/actions";
+import { ChangeEvent, FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type DbFile = {
   id: string;
@@ -20,8 +16,6 @@ type DbFile = {
   size?: number | null;
   size_bytes?: number | null;
   file_size?: number | null;
-  created_at?: string | null;
-  uploaded_at?: string | null;
 };
 
 function getFileName(file: DbFile) {
@@ -42,7 +36,6 @@ function getFileSize(file: DbFile) {
   if (!size) return "-";
   if (size < 1024) return `${size}B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)}KB`;
-
   return `${(size / 1024 / 1024).toFixed(1)}MB`;
 }
 
@@ -56,63 +49,73 @@ export function DbFileSection({
   files: DbFile[];
 }) {
   const router = useRouter();
-  const pathname = usePathname();
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
-  function handleUpload(e: FormEvent<HTMLFormElement>) {
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setSelectedFile(file);
+    setMsg(null);
+  }
+
+  async function handleUpload(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const selectedFile = fileInputRef.current?.files?.[0];
-
     if (!selectedFile) {
-      setMsg("파일을 먼저 선택해주세요.");
+      setMsg("파일을 선택해주세요.");
       return;
     }
+
+    setPending(true);
+    setMsg(null);
 
     const formData = new FormData();
     formData.append("file", selectedFile);
     formData.append("targetType", targetType);
     formData.append("targetId", targetId);
-    formData.append("returnPath", pathname);
 
-    startTransition(async () => {
-      const result = await uploadDbFileAction(formData);
-
-      if (result.ok) {
-        setMsg("파일이 업로드되었습니다.");
-
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-
-        router.refresh();
-      } else {
-        setMsg(result.error || "파일 업로드 중 오류가 발생했습니다.");
-      }
+    const response = await fetch("/api/db-files/upload", {
+      method: "POST",
+      body: formData,
     });
+
+    const result = await response.json();
+
+    setPending(false);
+
+    if (!result.ok) {
+      setMsg(result.error || "파일 업로드 중 오류가 발생했습니다.");
+      return;
+    }
+
+    setSelectedFile(null);
+    setMsg("파일이 업로드되었습니다.");
+    router.refresh();
   }
 
-  function removeFile(fileId: string) {
+  async function handleDelete(fileId: string) {
     if (!confirm("파일을 삭제할까요?")) return;
 
-    const formData = new FormData();
-    formData.append("fileId", fileId);
-    formData.append("returnPath", pathname);
+    setPending(true);
+    setMsg(null);
 
-    startTransition(async () => {
-      const result = await deleteDbFileAction(formData);
-
-      if (result.ok) {
-        setMsg("파일이 삭제되었습니다.");
-        router.refresh();
-      } else {
-        setMsg(result.error || "파일 삭제 중 오류가 발생했습니다.");
-      }
+    const response = await fetch(`/api/db-files/${fileId}`, {
+      method: "DELETE",
     });
+
+    const result = await response.json();
+
+    setPending(false);
+
+    if (!result.ok) {
+      setMsg(result.error || "파일 삭제 중 오류가 발생했습니다.");
+      return;
+    }
+
+    setMsg("파일이 삭제되었습니다.");
+    router.refresh();
   }
 
   return (
@@ -121,10 +124,9 @@ export function DbFileSection({
 
       <form onSubmit={handleUpload} className="mt-4 flex flex-col gap-3 md:flex-row">
         <input
-          ref={fileInputRef}
           type="file"
           name="file"
-          accept="*/*"
+          onChange={handleFileChange}
           className="input"
         />
 
@@ -132,6 +134,12 @@ export function DbFileSection({
           {pending ? "처리 중..." : "파일 업로드"}
         </button>
       </form>
+
+      {selectedFile && (
+        <p className="mt-2 text-sm text-slate-300">
+          선택된 파일: {selectedFile.name}
+        </p>
+      )}
 
       {msg && <p className="mt-3 text-sm text-slate-300">{msg}</p>}
 
@@ -166,7 +174,7 @@ export function DbFileSection({
                 <button
                   type="button"
                   className="btn btn-danger"
-                  onClick={() => removeFile(file.id)}
+                  onClick={() => handleDelete(file.id)}
                   disabled={pending}
                 >
                   삭제
