@@ -13,10 +13,22 @@ export default async function StaffPage() {
   const supabase = createSupabaseServerClient();
 
   const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+  .from("profiles")
+  .select(`
+    id,
+    created_at,
+    name,
+    login_id,
+    email,
+    auth_email,
+    phone,
+    role,
+    is_active,
+    deleted_at
+  `)
+  .is("deleted_at", null)
+  .order("created_at", { ascending: false })
+  .range(0, 99);
 
   async function handleCreateStaff(formData: FormData): Promise<void> {
     "use server";
