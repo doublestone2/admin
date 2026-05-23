@@ -49,7 +49,6 @@ function formatDate(value?: string | null) {
   if (!value) return "-";
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return "-";
 
   return date.toLocaleString("ko-KR", {
@@ -86,12 +85,12 @@ export function DbDetailEditor({
   const [msg, setMsg] = useState<string | null>(null);
   const [memo, setMemo] = useState("");
   const [pending, setPending] = useState(false);
+  const [localNotes, setLocalNotes] = useState<DbNote[]>(notes || []);
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+    const formData = new FormData(e.currentTarget);
     const values: Record<string, string> = {};
 
     fields.forEach((field) => {
@@ -157,7 +156,9 @@ export function DbDetailEditor({
   async function handleAddMemo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!memo.trim()) {
+    const content = memo.trim();
+
+    if (!content) {
       setMsg("메모 내용을 입력해주세요.");
       return;
     }
@@ -173,7 +174,7 @@ export function DbDetailEditor({
       body: JSON.stringify({
         targetType,
         targetId: record.id,
-        content: memo,
+        content,
       }),
     });
 
@@ -185,6 +186,15 @@ export function DbDetailEditor({
       return;
     }
 
+    const newNote: DbNote = result.note || {
+      id: crypto.randomUUID(),
+      content,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by_name: "-",
+    };
+
+    setLocalNotes((prev) => [newNote, ...prev]);
     setMemo("");
     setMsg("메모가 추가되었습니다.");
     router.refresh();
@@ -208,6 +218,7 @@ export function DbDetailEditor({
       return;
     }
 
+    setLocalNotes((prev) => prev.filter((note) => note.id !== noteId));
     setMsg("메모가 삭제되었습니다.");
     router.refresh();
   }
@@ -318,11 +329,11 @@ export function DbDetailEditor({
         </form>
 
         <div className="mt-4 space-y-3">
-          {notes.length === 0 ? (
+          {localNotes.length === 0 ? (
             <p className="text-sm text-slate-500">등록된 메모가 없습니다.</p>
           ) : null}
 
-          {notes.map((note) => (
+          {localNotes.map((note) => (
             <div
               key={note.id}
               className="rounded-xl border border-slate-800 bg-slate-950 p-4"

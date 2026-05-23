@@ -3,26 +3,40 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request) {
   try {
     const supabase = createSupabaseAdminClient();
+    const body = await request.json();
 
-    if (!params.id) {
+    const targetType = String(body.targetType || "");
+    const targetId = String(body.targetId || "");
+    const content = String(body.content || "").trim();
+
+    if (!targetType || !targetId) {
       return NextResponse.json(
-        { ok: false, error: "삭제할 메모 ID가 없습니다." },
+        { ok: false, error: "메모 연결 대상 정보가 없습니다." },
         { status: 400 }
       );
     }
 
-    const { error } = await supabase
+    if (!content) {
+      return NextResponse.json(
+        { ok: false, error: "메모 내용을 입력해주세요." },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase
       .from("db_notes")
-      .update({
-        deleted_at: new Date().toISOString(),
+      .insert({
+        target_type: targetType,
+        target_id: targetId,
+        content,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id);
+      .select("*")
+      .single();
 
     if (error) {
       return NextResponse.json(
@@ -31,7 +45,10 @@ export async function DELETE(
       );
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      note: data,
+    });
   } catch (error) {
     return NextResponse.json(
       {
@@ -39,7 +56,7 @@ export async function DELETE(
         error:
           error instanceof Error
             ? error.message
-            : "메모 삭제 중 오류가 발생했습니다.",
+            : "메모 추가 중 오류가 발생했습니다.",
       },
       { status: 500 }
     );
