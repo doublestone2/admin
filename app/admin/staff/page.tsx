@@ -12,23 +12,25 @@ export default async function StaffPage() {
 
   const supabase = createSupabaseServerClient();
 
-  const { data } = await supabase
-  .from("profiles")
-  .select(`
-    id,
-    created_at,
-    name,
-    login_id,
-    email,
-    auth_email,
-    phone,
-    role,
-    is_active,
-    deleted_at
-  `)
-  .is("deleted_at", null)
-  .order("created_at", { ascending: false })
-  .range(0, 99);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      `
+      id,
+      created_at,
+      name,
+      login_id,
+      email,
+      auth_email,
+      phone,
+      role,
+      is_active,
+      deleted_at
+    `
+    )
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .range(0, 99);
 
   async function handleCreateStaff(formData: FormData): Promise<void> {
     "use server";
@@ -44,7 +46,7 @@ export default async function StaffPage() {
     <>
       <PageHeader
         title="직원관리"
-        description="로그인ID와 비밀번호를 자유롭게 입력해도 내부에서 정규화됩니다."
+        description="직원 계정을 생성하고, 권한과 활성 상태를 관리합니다."
       />
 
       <section className="card mb-6 p-5">
@@ -59,10 +61,15 @@ export default async function StaffPage() {
           <input
             className="input"
             name="login_id"
-            placeholder="로그인ID 또는 이메일"
+            placeholder="로그인 ID 또는 이메일"
           />
 
-          <input className="input" name="password" placeholder="비밀번호" />
+          <input
+            className="input"
+            name="password"
+            type="password"
+            placeholder="비밀번호"
+          />
 
           <input className="input" name="phone" placeholder="연락처" />
 
@@ -80,6 +87,14 @@ export default async function StaffPage() {
       <section className="card p-5">
         <h2 className="font-black text-white">직원 목록</h2>
 
+        {error && (
+          <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+            직원 목록을 불러오는 중 오류가 발생했습니다.
+            <br />
+            {error.message}
+          </div>
+        )}
+
         <div className="mt-3 divide-y divide-slate-800">
           {(data || []).map((profile: any) => (
             <form
@@ -89,7 +104,7 @@ export default async function StaffPage() {
             >
               <input type="hidden" name="id" value={profile.id} />
 
-              <b>{profile.name}</b>
+              <b>{profile.name || "-"}</b>
 
               <span className="text-sm text-slate-400">
                 {profile.login_id || profile.email || profile.auth_email || "-"}
@@ -102,7 +117,7 @@ export default async function StaffPage() {
               <select
                 className="input"
                 name="role"
-                defaultValue={profile.role}
+                defaultValue={profile.role || "STAFF"}
               >
                 <option value="STAFF">STAFF</option>
                 <option value="ADMIN">ADMIN</option>
@@ -112,13 +127,13 @@ export default async function StaffPage() {
                 <input
                   type="checkbox"
                   name="is_active"
-                  defaultChecked={profile.is_active}
+                  defaultChecked={profile.is_active !== false}
                 />
                 활성
               </label>
 
               <button className="btn btn-secondary" type="submit">
-                저장
+                수정
               </button>
 
               <div className="flex justify-end">
@@ -131,7 +146,7 @@ export default async function StaffPage() {
             </form>
           ))}
 
-          {(data || []).length === 0 && (
+          {!error && (data || []).length === 0 && (
             <p className="py-6 text-center text-sm text-slate-500">
               등록된 직원이 없습니다.
             </p>
