@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { FormEvent, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   deleteDbFileAction,
   uploadDbFileAction,
@@ -40,7 +40,6 @@ function getFileSize(file: DbFile) {
   const size = file.file_size || file.size_bytes || file.size;
 
   if (!size) return "-";
-
   if (size < 1024) return `${size}B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)}KB`;
 
@@ -56,20 +55,41 @@ export function DbFileSection({
   targetId: string;
   files: DbFile[];
 }) {
+  const router = useRouter();
   const pathname = usePathname();
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function upload(formData: FormData) {
-    formData.set("targetType", targetType);
-    formData.set("targetId", targetId);
-    formData.set("returnPath", pathname);
+  function handleUpload(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const selectedFile = fileInputRef.current?.files?.[0];
+
+    if (!selectedFile) {
+      setMsg("파일을 먼저 선택해주세요.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("targetType", targetType);
+    formData.append("targetId", targetId);
+    formData.append("returnPath", pathname);
 
     startTransition(async () => {
       const result = await uploadDbFileAction(formData);
 
       if (result.ok) {
         setMsg("파일이 업로드되었습니다.");
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+
+        router.refresh();
       } else {
         setMsg(result.error || "파일 업로드 중 오류가 발생했습니다.");
       }
@@ -80,14 +100,15 @@ export function DbFileSection({
     if (!confirm("파일을 삭제할까요?")) return;
 
     const formData = new FormData();
-    formData.set("fileId", fileId);
-    formData.set("returnPath", pathname);
+    formData.append("fileId", fileId);
+    formData.append("returnPath", pathname);
 
     startTransition(async () => {
       const result = await deleteDbFileAction(formData);
 
       if (result.ok) {
         setMsg("파일이 삭제되었습니다.");
+        router.refresh();
       } else {
         setMsg(result.error || "파일 삭제 중 오류가 발생했습니다.");
       }
@@ -96,19 +117,18 @@ export function DbFileSection({
 
   return (
     <section className="card p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-black text-white">첨부파일</h2>
-      </div>
+      <h2 className="text-lg font-black text-white">첨부파일</h2>
 
-      <form action={upload} className="mt-4 flex flex-col gap-3 md:flex-row">
+      <form onSubmit={handleUpload} className="mt-4 flex flex-col gap-3 md:flex-row">
         <input
+          ref={fileInputRef}
           type="file"
           name="file"
+          accept="*/*"
           className="input"
-          required
         />
 
-        <button className="btn btn-primary" disabled={pending}>
+        <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending ? "처리 중..." : "파일 업로드"}
         </button>
       </form>
@@ -128,6 +148,7 @@ export function DbFileSection({
             >
               <div>
                 <p className="font-semibold text-white">{getFileName(file)}</p>
+
                 <p className="mt-1 text-xs text-slate-500">
                   {file.mime_type || file.content_type || "파일 형식 미확인"} ·{" "}
                   {getFileSize(file)}
