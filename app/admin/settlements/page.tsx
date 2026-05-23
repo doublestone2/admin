@@ -1,7 +1,7 @@
-import { SettlementManager } from "@/components/settlements/SettlementManager";
+import { AutoSettlementManager } from "@/components/settlements/AutoSettlementManager";
 
 export const dynamic = "force-dynamic";
 
 export default function SettlementsPage() {
-  return <SettlementManager />;
+  return <AutoSettlementManager />;
 }
