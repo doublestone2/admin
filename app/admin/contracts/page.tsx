@@ -1,41 +1,46 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ContractTable } from "@/components/contracts/ContractTable";
 import { getContractRows } from "@/lib/data/contracts";
 import { getProfilesForSelect } from "@/lib/data/leads";
 import { getStaffNameOptions } from "@/lib/data/settings";
 import { formatMoney } from "@/lib/utils/format";
+import { ListSearchBar } from "@/components/common/ListSearchBar";
+import { Pagination } from "@/components/common/Pagination";
 
 export const dynamic = "force-dynamic";
 
-function makePageHref(page: number) {
-  const params = new URLSearchParams();
-  params.set("page", String(page));
-
-  return `/admin/contracts?${params.toString()}`;
-}
+const SEARCH_OPTIONS = [
+  { label: "전체", value: "all" },
+  { label: "이름", value: "name" },
+  { label: "전화번호", value: "phone" },
+  { label: "담당자", value: "manager_name" },
+  { label: "메모", value: "memo" },
+];
 
 export default async function ContractsPage({
   searchParams,
 }: {
   searchParams: {
+    q?: string;
+    field?: string;
     page?: string;
   };
 }) {
   const currentPage = Math.max(1, Number(searchParams.page || 1) || 1);
+  const q = searchParams.q || "";
+  const field = searchParams.field || "all";
 
   const [{ rows, stats, count, totalPages, pageSize }, profiles, staffNames] =
     await Promise.all([
       getContractRows({
         page: currentPage,
         paginated: true,
+        query: q,
+        field,
       }),
       getProfilesForSelect(),
       getStaffNameOptions(),
     ]);
-
-  const hasPrev = currentPage > 1;
-  const hasNext = currentPage < totalPages;
 
   return (
     <>
@@ -58,50 +63,35 @@ export default async function ContractsPage({
         ))}
       </div>
 
+      <ListSearchBar
+        basePath="/admin/contracts"
+        query={q}
+        field={field}
+        options={SEARCH_OPTIONS}
+      />
+
       <ContractTable
         rows={rows}
         profiles={profiles}
         staffNames={staffNames}
         totalCount={count}
         currentPage={currentPage}
-         pageSize={pageSize}
-        />
+        pageSize={pageSize}
+      />
 
-      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 md:flex-row md:items-center md:justify-between">
-        <div className="text-sm text-slate-400">
-          총 <b className="text-white">{count}</b>건 · 현재{" "}
-          <b className="text-white">{currentPage}</b> / {totalPages}페이지 ·
-          페이지당 {pageSize}건
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasPrev ? (
-            <Link
-              className="btn btn-secondary"
-              href={makePageHref(currentPage - 1)}
-            >
-              이전
-            </Link>
-          ) : (
-            <button className="btn btn-secondary opacity-40" disabled>
-              이전
-            </button>
-          )}
-
-          {hasNext ? (
-            <Link
-              className="btn btn-secondary"
-              href={makePageHref(currentPage + 1)}
-            >
-              다음
-            </Link>
-          ) : (
-            <button className="btn btn-secondary opacity-40" disabled>
-              다음
-            </button>
-          )}
-        </div>
+      <div className="mt-4 text-sm text-slate-400">
+        총 <b className="text-white">{count}</b>건 · 현재{" "}
+        <b className="text-white">{currentPage}</b> / {totalPages}페이지 ·
+        페이지당 {pageSize}건
       </div>
+
+      <Pagination
+        basePath="/admin/contracts"
+        currentPage={currentPage}
+        totalPages={totalPages}
+        query={q}
+        field={field}
+      />
     </>
   );
 }

@@ -3,6 +3,38 @@ import type { Hospital, InsuranceContact, PartnerCompany } from "@/types";
 
 export const CONTACT_PAGE_SIZE = 20;
 
+type ContactSearchField =
+  | "all"
+  | "company_name"
+  | "region"
+  | "phone"
+  | "memo"
+  | "manager_name";
+
+type ListInput =
+  | string
+  | {
+      query?: string;
+      page?: number;
+      field?: string;
+    };
+
+function normalizeListInput(input: ListInput = "") {
+  if (typeof input === "string") {
+    return {
+      query: input,
+      page: 1,
+      field: "all",
+    };
+  }
+
+  return {
+    query: String(input.query || "").trim(),
+    page: Math.max(1, Number(input.page || 1)),
+    field: String(input.field || "all"),
+  };
+}
+
 function getPageRange(page: number) {
   const safePage = Math.max(1, Number(page || 1));
   const from = (safePage - 1) * CONTACT_PAGE_SIZE;
@@ -19,29 +51,82 @@ function getTotalPages(count: number) {
   return Math.max(1, Math.ceil((count || 0) / CONTACT_PAGE_SIZE));
 }
 
-type ListInput =
-  | string
-  | {
-      query?: string;
-      page?: number;
-    };
+function buildInsuranceFilter(query: string, field: string) {
+  if (!query) return "";
 
-function normalizeListInput(input: ListInput = "") {
-  if (typeof input === "string") {
-    return {
-      query: input,
-      page: 1,
-    };
+  if (field === "company_name") {
+    return `insurance_company.ilike.%${query}%`;
   }
 
-  return {
-    query: input.query || "",
-    page: Math.max(1, Number(input.page || 1)),
-  };
+  if (field === "phone") {
+    return `phone.ilike.%${query}%`;
+  }
+
+  if (field === "memo") {
+    return `memo.ilike.%${query}%`;
+  }
+
+  if (field === "manager_name") {
+    return `manager_name.ilike.%${query}%`;
+  }
+
+  return `insurance_company.ilike.%${query}%,manager_name.ilike.%${query}%,position.ilike.%${query}%,phone.ilike.%${query}%,memo.ilike.%${query}%`;
+}
+
+function buildPartnerFilter(query: string, field: string) {
+  if (!query) return "";
+
+  if (field === "company_name") {
+    return `company_name.ilike.%${query}%,name.ilike.%${query}%,partner_name.ilike.%${query}%`;
+  }
+
+  if (field === "region") {
+    return `region.ilike.%${query}%`;
+  }
+
+  if (field === "phone") {
+    return `phone.ilike.%${query}%`;
+  }
+
+  if (field === "memo") {
+    return `memo.ilike.%${query}%`;
+  }
+
+  if (field === "manager_name") {
+    return `manager_name.ilike.%${query}%`;
+  }
+
+  return `company_name.ilike.%${query}%,name.ilike.%${query}%,partner_name.ilike.%${query}%,region.ilike.%${query}%,phone.ilike.%${query}%,manager_name.ilike.%${query}%,memo.ilike.%${query}%`;
+}
+
+function buildHospitalFilter(query: string, field: string) {
+  if (!query) return "";
+
+  if (field === "company_name") {
+    return `hospital_name.ilike.%${query}%,name.ilike.%${query}%`;
+  }
+
+  if (field === "region") {
+    return `region.ilike.%${query}%,address.ilike.%${query}%,hospital_address.ilike.%${query}%`;
+  }
+
+  if (field === "phone") {
+    return `phone.ilike.%${query}%,hospital_phone.ilike.%${query}%`;
+  }
+
+  if (field === "memo") {
+    return `memo.ilike.%${query}%`;
+  }
+
+  if (field === "manager_name") {
+    return `manager_name.ilike.%${query}%,internal_manager_name.ilike.%${query}%`;
+  }
+
+  return `hospital_name.ilike.%${query}%,name.ilike.%${query}%,region.ilike.%${query}%,address.ilike.%${query}%,hospital_address.ilike.%${query}%,phone.ilike.%${query}%,hospital_phone.ilike.%${query}%,manager_name.ilike.%${query}%,internal_manager_name.ilike.%${query}%,memo.ilike.%${query}%`;
 }
 
 export async function getInsuranceContacts(input: ListInput = "") {
-  const { query, page } = normalizeListInput(input);
+  const { query, page, field } = normalizeListInput(input);
   const { from, to } = getPageRange(page);
 
   const supabase = createSupabaseServerClient();
@@ -64,9 +149,7 @@ export async function getInsuranceContacts(input: ListInput = "") {
     .is("deleted_at", null);
 
   if (query) {
-    q = q.or(
-      `insurance_company.ilike.%${query}%,manager_name.ilike.%${query}%,phone.ilike.%${query}%`
-    );
+    q = q.or(buildInsuranceFilter(query, field));
   }
 
   const { data, error, count } = await q
@@ -102,7 +185,7 @@ export async function getInsuranceContact(id: string) {
 }
 
 export async function getPartnerCompanies(input: ListInput = "") {
-  const { query, page } = normalizeListInput(input);
+  const { query, page, field } = normalizeListInput(input);
   const { from, to } = getPageRange(page);
 
   const supabase = createSupabaseServerClient();
@@ -130,9 +213,7 @@ export async function getPartnerCompanies(input: ListInput = "") {
     .is("deleted_at", null);
 
   if (query) {
-    q = q.or(
-      `company_name.ilike.%${query}%,name.ilike.%${query}%,partner_name.ilike.%${query}%,region.ilike.%${query}%,phone.ilike.%${query}%`
-    );
+    q = q.or(buildPartnerFilter(query, field));
   }
 
   const { data, error, count } = await q
@@ -168,7 +249,7 @@ export async function getPartnerCompany(id: string) {
 }
 
 export async function getHospitals(input: ListInput = "") {
-  const { query, page } = normalizeListInput(input);
+  const { query, page, field } = normalizeListInput(input);
   const { from, to } = getPageRange(page);
 
   const supabase = createSupabaseServerClient();
@@ -200,9 +281,7 @@ export async function getHospitals(input: ListInput = "") {
     .is("deleted_at", null);
 
   if (query) {
-    q = q.or(
-      `hospital_name.ilike.%${query}%,name.ilike.%${query}%,region.ilike.%${query}%,phone.ilike.%${query}%,hospital_phone.ilike.%${query}%`
-    );
+    q = q.or(buildHospitalFilter(query, field));
   }
 
   const { data, error, count } = await q

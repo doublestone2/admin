@@ -1,37 +1,28 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { LeadTable } from "@/components/leads/LeadTable";
-import { getLeads, getProfilesForSelect } from "@/lib/data/leads";
+import { getLeads, getProfilesForSelect, LEAD_PAGE_SIZE } from "@/lib/data/leads";
 import { getStaffNameOptions } from "@/lib/data/settings";
 import { requireAuth } from "@/lib/auth/get-profile";
+import { ListSearchBar } from "@/components/common/ListSearchBar";
+import { Pagination } from "@/components/common/Pagination";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 20;
-
-function makePageHref({
-  page,
-  q,
-  status,
-}: {
-  page: number;
-  q?: string;
-  status?: string;
-}) {
-  const params = new URLSearchParams();
-
-  if (q) params.set("q", q);
-  if (status) params.set("status", status);
-  params.set("page", String(page));
-
-  return `/admin/leads?${params.toString()}`;
-}
+const SEARCH_OPTIONS = [
+  { label: "전체", value: "all" },
+  { label: "이름", value: "name" },
+  { label: "전화번호", value: "phone" },
+  { label: "상대보험사", value: "insurance_company" },
+  { label: "담당자", value: "manager_name" },
+  { label: "메모", value: "memo" },
+];
 
 export default async function LeadsPage({
   searchParams,
 }: {
   searchParams: {
     q?: string;
+    field?: string;
     status?: string;
     page?: string;
   };
@@ -40,11 +31,13 @@ export default async function LeadsPage({
 
   const currentPage = Math.max(1, Number(searchParams.page || 1) || 1);
   const q = searchParams.q || "";
+  const field = searchParams.field || "all";
   const status = searchParams.status || "";
 
   const [data, profiles, staffNames] = await Promise.all([
     getLeads({
       query: q,
+      field,
       status,
       page: currentPage,
     }),
@@ -53,16 +46,21 @@ export default async function LeadsPage({
   ]);
 
   const totalCount = data.count || 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-
-  const hasPrev = currentPage > 1;
-  const hasNext = currentPage < totalPages;
+  const totalPages = data.totalPages || 1;
+  const pageSize = data.pageSize || LEAD_PAGE_SIZE;
 
   return (
     <>
       <PageHeader
         title="교통사고 DB관리"
         description="상담 DB를 추가하고, 메모와 진행상태를 관리합니다."
+      />
+
+      <ListSearchBar
+        basePath="/admin/leads"
+        query={q}
+        field={field}
+        options={SEARCH_OPTIONS}
       />
 
       <LeadTable
@@ -72,52 +70,23 @@ export default async function LeadsPage({
         role={profile.role}
         totalCount={totalCount}
         currentPage={currentPage}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
       />
 
-      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 md:flex-row md:items-center md:justify-between">
-        <div className="text-sm text-slate-400">
-          총 <b className="text-white">{totalCount}</b>건 · 현재{" "}
-          <b className="text-white">{currentPage}</b> / {totalPages}페이지 ·
-          페이지당 {PAGE_SIZE}건
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasPrev ? (
-            <Link
-              className="btn btn-secondary"
-              href={makePageHref({
-                page: currentPage - 1,
-                q,
-                status,
-              })}
-            >
-              이전
-            </Link>
-          ) : (
-            <button className="btn btn-secondary opacity-40" disabled>
-              이전
-            </button>
-          )}
-
-          {hasNext ? (
-            <Link
-              className="btn btn-secondary"
-              href={makePageHref({
-                page: currentPage + 1,
-                q,
-                status,
-              })}
-            >
-              다음
-            </Link>
-          ) : (
-            <button className="btn btn-secondary opacity-40" disabled>
-              다음
-            </button>
-          )}
-        </div>
+      <div className="mt-4 text-sm text-slate-400">
+        총 <b className="text-white">{totalCount}</b>건 · 현재{" "}
+        <b className="text-white">{currentPage}</b> / {totalPages}페이지 ·
+        페이지당 {pageSize}건
       </div>
+
+      <Pagination
+        basePath="/admin/leads"
+        currentPage={currentPage}
+        totalPages={totalPages}
+        query={q}
+        field={field}
+        status={status}
+      />
     </>
   );
 }

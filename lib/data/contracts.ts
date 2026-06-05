@@ -18,9 +18,18 @@ export type ContractRow = {
   lead_contracts: LeadContract[];
 };
 
+type ContractSearchField =
+  | "all"
+  | "name"
+  | "phone"
+  | "manager_name"
+  | "memo";
+
 type GetContractRowsInput = {
   page?: number;
   paginated?: boolean;
+  query?: string;
+  field?: ContractSearchField | string;
 };
 
 function money(value: unknown) {
@@ -49,6 +58,57 @@ function getPageRange(page: number) {
 
 function getTotalPages(count: number) {
   return Math.max(1, Math.ceil((count || 0) / CONTRACT_PAGE_SIZE));
+}
+
+function buildLeadFilter(query: string, field: string) {
+  if (!query) return "";
+
+  if (field === "name") {
+    return `name.ilike.%${query}%`;
+  }
+
+  if (field === "phone") {
+    return `phone.ilike.%${query}%`;
+  }
+
+  if (field === "manager_name") {
+    return `manager_name.ilike.%${query}%`;
+  }
+
+  return `name.ilike.%${query}%,phone.ilike.%${query}%,manager_name.ilike.%${query}%`;
+}
+
+async function getLeadIdsFromContracts(query: string, field: string) {
+  const supabase = createSupabaseServerClient();
+
+  let q = supabase
+    .from("lead_contracts")
+    .select("lead_id")
+    .limit(1000);
+
+  if (field === "memo") {
+    q = q.ilike("memo", `%${query}%`);
+  } else if (field === "manager_name") {
+    q = q.or(
+      `primary_manager_name.ilike.%${query}%,secondary_manager_name.ilike.%${query}%,manager_name.ilike.%${query}%`
+    );
+  } else {
+    q = q.or(
+      `memo.ilike.%${query}%,primary_manager_name.ilike.%${query}%,secondary_manager_name.ilike.%${query}%,manager_name.ilike.%${query}%`
+    );
+  }
+
+  const { data, error } = await q;
+
+  if (error) throw new Error(error.message);
+
+  return Array.from(
+    new Set(
+      ((data || []) as any[])
+        .map((row) => row.lead_id)
+        .filter(Boolean)
+    )
+  );
 }
 
 export function calcContractStats(rows: ContractRow[]) {
@@ -85,9 +145,32 @@ export function calcContractStats(rows: ContractRow[]) {
 
 export async function getContractRows(input: GetContractRowsInput = {}) {
   const page = Math.max(1, Number(input.page || 1));
+  const queryText = String(input.query || "").trim();
+  const field = String(input.field || "all");
+
   const { from, to } = getPageRange(page);
 
   const supabase = createSupabaseServerClient();
+
+  let contractLeadIds: string[] = [];
+
+  if (
+    queryText &&
+    (field === "all" || field === "memo" || field === "manager_name")
+  ) {
+    contractLeadIds = await getLeadIdsFromContracts(queryText, field);
+  }
+
+  if (queryText && field === "memo" && contractLeadIds.length === 0) {
+    return {
+      rows: [],
+      stats: calcContractStats([]),
+      count: 0,
+      page,
+      pageSize: CONTRACT_PAGE_SIZE,
+      totalPages: 1,
+    };
+  }
 
   let query = supabase
     .from("leads")
@@ -108,6 +191,22 @@ export async function getContractRows(input: GetContractRowsInput = {}) {
     .is("deleted_at", null)
     .in("status", ["CONTRACTED", "CLOSED"])
     .order("created_at", { ascending: false });
+
+  if (queryText) {
+    if (field === "memo") {
+      query = query.in("id", contractLeadIds);
+    } else if (
+      (field === "all" || field === "manager_name") &&
+      contractLeadIds.length > 0
+    ) {
+      const leadFilter = buildLeadFilter(queryText, field);
+      const contractFilter = `id.in.(${contractLeadIds.join(",")})`;
+
+      query = query.or(`${leadFilter},${contractFilter}`);
+    } else {
+      query = query.or(buildLeadFilter(queryText, field));
+    }
+  }
 
   if (input.paginated) {
     query = query.range(from, to);

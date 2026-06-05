@@ -1,43 +1,40 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ContactTable } from "@/components/contacts/ContactTable";
 import { getStaffNameOptions } from "@/lib/data/settings";
 import { requireAuth } from "@/lib/auth/get-profile";
 import { getInsuranceContacts } from "@/lib/data/contacts";
+import { ListSearchBar } from "@/components/common/ListSearchBar";
+import { Pagination } from "@/components/common/Pagination";
 
 export const dynamic = "force-dynamic";
 
-function makePageHref({
-  page,
-  q,
-}: {
-  page: number;
-  q?: string;
-}) {
-  const params = new URLSearchParams();
-
-  if (q) params.set("q", q);
-  params.set("page", String(page));
-
-  return `/admin/insurance?${params.toString()}`;
-}
+const SEARCH_OPTIONS = [
+  { label: "전체", value: "all" },
+  { label: "업체명", value: "company_name" },
+  { label: "담당자", value: "manager_name" },
+  { label: "전화번호", value: "phone" },
+  { label: "메모", value: "memo" },
+];
 
 export default async function Page({
   searchParams,
 }: {
   searchParams: {
     q?: string;
+    field?: string;
     page?: string;
   };
 }) {
   const profile = await requireAuth();
 
   const q = searchParams.q || "";
+  const field = searchParams.field || "all";
   const currentPage = Math.max(1, Number(searchParams.page || 1) || 1);
 
   const [data, staffNames] = await Promise.all([
     getInsuranceContacts({
       query: q,
+      field,
       page: currentPage,
     }),
     getStaffNameOptions(),
@@ -47,14 +44,18 @@ export default async function Page({
   const totalPages = data.totalPages || 1;
   const pageSize = data.pageSize || 20;
 
-  const hasPrev = currentPage > 1;
-  const hasNext = currentPage < totalPages;
-
   return (
     <>
       <PageHeader
         title="보험사 DB"
         description="보험사 담당자 정보를 관리합니다."
+      />
+
+      <ListSearchBar
+        basePath="/admin/insurance"
+        query={q}
+        field={field}
+        options={SEARCH_OPTIONS}
       />
 
       <ContactTable
@@ -67,46 +68,19 @@ export default async function Page({
         pageSize={pageSize}
       />
 
-      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 md:flex-row md:items-center md:justify-between">
-        <div className="text-sm text-slate-400">
-          총 <b className="text-white">{totalCount}</b>건 · 현재{" "}
-          <b className="text-white">{currentPage}</b> / {totalPages}페이지
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasPrev ? (
-            <Link
-              className="btn btn-secondary"
-              href={makePageHref({
-                page: currentPage - 1,
-                q,
-              })}
-            >
-              이전
-            </Link>
-          ) : (
-            <button className="btn btn-secondary opacity-40" disabled>
-              이전
-            </button>
-          )}
-
-          {hasNext ? (
-            <Link
-              className="btn btn-secondary"
-              href={makePageHref({
-                page: currentPage + 1,
-                q,
-              })}
-            >
-              다음
-            </Link>
-          ) : (
-            <button className="btn btn-secondary opacity-40" disabled>
-              다음
-            </button>
-          )}
-        </div>
+      <div className="mt-4 text-sm text-slate-400">
+        총 <b className="text-white">{totalCount}</b>건 · 현재{" "}
+        <b className="text-white">{currentPage}</b> / {totalPages}페이지 ·
+        페이지당 {pageSize}건
       </div>
+
+      <Pagination
+        basePath="/admin/insurance"
+        currentPage={currentPage}
+        totalPages={totalPages}
+        query={q}
+        field={field}
+      />
     </>
   );
 }

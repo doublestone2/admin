@@ -1,29 +1,110 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Lead, LeadNoteWithAuthor, Profile } from "@/types";
 
+export const LEAD_PAGE_SIZE = 20;
+
 export type LeadRow = Lead & {
   profiles?: { name: string; email: string | null } | null;
   latest_note?: string | null;
 };
 
+type LeadSearchField =
+  | "all"
+  | "name"
+  | "phone"
+  | "insurance_company"
+  | "manager_name"
+  | "memo";
+
 function normalizeProfile(row: any) {
-  const p = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-  return p || null;
+  const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  return profile || null;
+}
+
+function normalizeSearchText(value: string) {
+  return String(value || "").trim();
+}
+
+async function getLeadIdsByMemo(query: string) {
+  const supabase = createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("lead_notes")
+    .select("lead_id")
+    .ilike("content", `%${query}%`)
+    .is("deleted_at", null)
+    .limit(1000);
+
+  if (error) throw new Error(error.message);
+
+  const ids = Array.from(
+    new Set(
+      ((data || []) as any[])
+        .map((row) => row.lead_id)
+        .filter(Boolean)
+    )
+  );
+
+  return ids;
+}
+
+function buildLeadTextFilter(query: string, field: LeadSearchField) {
+  if (!query) return "";
+
+  if (field === "name") {
+    return `name.ilike.%${query}%`;
+  }
+
+  if (field === "phone") {
+    return `phone.ilike.%${query}%`;
+  }
+
+  if (field === "insurance_company") {
+    return `insurance_company.ilike.%${query}%`;
+  }
+
+  if (field === "manager_name") {
+    return `manager_name.ilike.%${query}%`;
+  }
+
+  return `name.ilike.%${query}%,phone.ilike.%${query}%,insurance_company.ilike.%${query}%,manager_name.ilike.%${query}%`;
 }
 
 export async function getLeads({
   page = 1,
   query = "",
   status = "",
+  field = "all",
 }: {
   page?: number;
   query?: string;
   status?: string;
+  field?: LeadSearchField | string;
 }) {
   const supabase = createSupabaseServerClient();
 
-  const from = (page - 1) * 20;
-  const to = from + 19;
+  const safePage = Math.max(1, Number(page || 1));
+  const searchText = normalizeSearchText(query);
+  const searchField = (field || "all") as LeadSearchField;
+
+  const from = (safePage - 1) * LEAD_PAGE_SIZE;
+  const to = from + LEAD_PAGE_SIZE - 1;
+
+  let memoLeadIds: string[] = [];
+
+  if (searchText && (searchField === "memo" || searchField === "all")) {
+    memoLeadIds = await getLeadIdsByMemo(searchText);
+  }
+
+  if (searchText && searchField === "memo" && memoLeadIds.length === 0) {
+    return {
+      rows: [],
+      count: 0,
+      page: safePage,
+      pageSize: LEAD_PAGE_SIZE,
+      totalPages: 1,
+    };
+  }
 
   let q = supabase
     .from("leads")
@@ -45,10 +126,18 @@ export async function getLeads({
     )
     .is("deleted_at", null);
 
-  if (query) {
-    q = q.or(
-      `name.ilike.%${query}%,phone.ilike.%${query}%,insurance_company.ilike.%${query}%,manager_name.ilike.%${query}%`
-    );
+  if (searchText) {
+    if (searchField === "memo") {
+      q = q.in("id", memoLeadIds);
+    } else if (searchField === "all" && memoLeadIds.length > 0) {
+      const leadFilter = buildLeadTextFilter(searchText, searchField);
+      const memoFilter = `id.in.(${memoLeadIds.join(",")})`;
+
+      q = q.or(`${leadFilter},${memoFilter}`);
+    } else {
+      const leadFilter = buildLeadTextFilter(searchText, searchField);
+      q = q.or(leadFilter);
+    }
   }
 
   if (status) {
@@ -61,12 +150,12 @@ export async function getLeads({
 
   if (error) throw new Error(error.message);
 
-  const rows = ((data || []) as any[]).map((r) => ({
-    ...r,
-    profiles: normalizeProfile(r),
+  const rows = ((data || []) as any[]).map((row) => ({
+    ...row,
+    profiles: normalizeProfile(row),
   })) as LeadRow[];
 
-  const ids = rows.map((r) => r.id);
+  const ids = rows.map((row) => row.id);
 
   if (ids.length) {
     const { data: notes } = await supabase
@@ -90,7 +179,15 @@ export async function getLeads({
     });
   }
 
-  return { rows, count: count || 0, page };
+  const totalCount = count || 0;
+
+  return {
+    rows,
+    count: totalCount,
+    page: safePage,
+    pageSize: LEAD_PAGE_SIZE,
+    totalPages: Math.max(1, Math.ceil(totalCount / LEAD_PAGE_SIZE)),
+  };
 }
 
 export async function getLead(id: string): Promise<LeadRow | null> {
