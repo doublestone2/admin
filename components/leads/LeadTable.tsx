@@ -264,15 +264,6 @@ export function LeadTable({
             ))}
           </select>
 
-          <select className="input" name="assigned_to">
-            <option value="">담당자 계정 선택</option>
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name}
-              </option>
-            ))}
-          </select>
-
           <select className="input" name="manager_name">
             <option value="">담당자명 선택</option>
             {staffNames.map((name) => (
