@@ -22,6 +22,9 @@ type ContactTableProps = {
   rows: any[];
   staffNames: string[];
   role: string;
+  totalCount?: number;
+  currentPage?: number;
+  pageSize?: number;
 };
 
 export function ContactTable({
@@ -29,6 +32,9 @@ export function ContactTable({
   rows,
   staffNames,
   role,
+  totalCount = rows.length,
+  currentPage = 1,
+  pageSize = 20,
 }: ContactTableProps) {
   const router = useRouter();
 
@@ -50,6 +56,10 @@ export function ContactTable({
       : kind === "partner"
         ? "제휴업체"
         : "병원";
+
+  function getRowNumber(index: number) {
+    return totalCount - ((currentPage - 1) * pageSize + index);
+  }
 
   function handleOpenCreate() {
     setMsg(null);
@@ -78,6 +88,7 @@ export function ContactTable({
         setOpen(false);
         setEdit(null);
         setMsg("저장되었습니다.");
+        router.refresh();
         return;
       }
 
@@ -86,7 +97,7 @@ export function ContactTable({
   }
 
   function handleDelete(id: string) {
-    if (!window.confirm("삭제할까요?")) return;
+    if (!window.confirm("정말 삭제하시겠습니까?")) return;
 
     const formData = new FormData();
     formData.set("id", id);
@@ -99,6 +110,10 @@ export function ContactTable({
           ? "삭제되었습니다."
           : result.error ?? "삭제에 실패했습니다."
       );
+
+      if (result.ok) {
+        router.refresh();
+      }
     });
   }
 
@@ -124,6 +139,8 @@ export function ContactTable({
         <table className="w-full text-sm">
           <thead className="bg-slate-900 text-slate-400">
             <tr>
+              <th className="w-16 p-3 text-left">No</th>
+
               {kind === "insurance" ? (
                 <>
                   <th className="p-3 text-left">등록일</th>
@@ -168,26 +185,30 @@ export function ContactTable({
               <tr>
                 <td
                   className="p-6 text-center text-sm text-slate-500"
-                  colSpan={8}
+                  colSpan={9}
                 >
                   등록된 데이터가 없습니다.
                 </td>
               </tr>
             ) : null}
 
-            {rows.map((row: any) => (
+            {rows.map((row: any, index: number) => (
               <tr
                 key={row.id}
                 className="table-row-clickable cursor-pointer hover:bg-slate-900/70"
                 onClick={() => router.push(`${base}/${row.id}`)}
               >
+                <td className="p-3 font-semibold text-slate-300">
+                  {getRowNumber(index)}
+                </td>
+
                 {kind === "insurance" ? (
                   <>
                     <td className="p-3 text-slate-400">
                       {formatKSTDateTime(row.created_at)}
                     </td>
                     <td className="p-3 font-bold text-white">
-                      {row.insurance_company}
+                      {row.insurance_company || "-"}
                     </td>
                     <td className="p-3">{row.manager_name || "-"}</td>
                     <td className="p-3">{row.position || "-"}</td>
@@ -204,7 +225,7 @@ export function ContactTable({
                       {formatKSTDateTime(row.created_at)}
                     </td>
                     <td className="p-3 font-bold text-white">
-                      {row.company_name}
+                      {row.company_name || row.name || "-"}
                     </td>
                     <td className="p-3">{row.region || "-"}</td>
                     <td className="p-3">{row.phone || "-"}</td>
@@ -222,13 +243,13 @@ export function ContactTable({
                       {formatKSTDateTime(row.created_at)}
                     </td>
                     <td className="p-3 font-bold text-white">
-                      {row.hospital_name}
+                      {row.hospital_name || row.name || "-"}
                     </td>
                     <td className="p-3">{row.region || "-"}</td>
                     <td className="p-3">{row.hospital_type || "-"}</td>
                     <td className="p-3">{row.partnership_status || "-"}</td>
                     <td className="p-3">
-                      {row.internal_manager_name || "-"}
+                      {row.internal_manager_name || row.manager_name || "-"}
                     </td>
                     <td className="max-w-xs truncate p-3 text-slate-400">
                       {row.memo || "-"}

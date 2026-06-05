@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { LeadContract, LeadStatus } from "@/types";
 
+export const CONTRACT_PAGE_SIZE = 20;
+
 export type ContractRow = {
   id: string;
   name: string;
@@ -16,6 +18,11 @@ export type ContractRow = {
   lead_contracts: LeadContract[];
 };
 
+type GetContractRowsInput = {
+  page?: number;
+  paginated?: boolean;
+};
+
 function money(value: unknown) {
   const raw = String(value || "0").replaceAll(",", "");
   const n = Number(raw);
@@ -26,6 +33,22 @@ function normalizeLeadContracts(value: unknown): LeadContract[] {
   if (Array.isArray(value)) return value as LeadContract[];
   if (value) return [value as LeadContract];
   return [];
+}
+
+function getPageRange(page: number) {
+  const safePage = Math.max(1, Number(page || 1));
+  const from = (safePage - 1) * CONTRACT_PAGE_SIZE;
+  const to = from + CONTRACT_PAGE_SIZE - 1;
+
+  return {
+    page: safePage,
+    from,
+    to,
+  };
+}
+
+function getTotalPages(count: number) {
+  return Math.max(1, Math.ceil((count || 0) / CONTRACT_PAGE_SIZE));
 }
 
 export function calcContractStats(rows: ContractRow[]) {
@@ -60,10 +83,13 @@ export function calcContractStats(rows: ContractRow[]) {
   };
 }
 
-export async function getContractRows() {
+export async function getContractRows(input: GetContractRowsInput = {}) {
+  const page = Math.max(1, Number(input.page || 1));
+  const { from, to } = getPageRange(page);
+
   const supabase = createSupabaseServerClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("leads")
     .select(
       `
@@ -76,22 +102,37 @@ export async function getContractRows() {
       created_at,
       profiles:assigned_to(name,email),
       lead_contracts(*)
-    `
+    `,
+      { count: "exact" }
     )
     .is("deleted_at", null)
     .in("status", ["CONTRACTED", "CLOSED"])
     .order("created_at", { ascending: false });
 
+  if (input.paginated) {
+    query = query.range(from, to);
+  }
+
+  const { data, error, count } = await query;
+
   if (error) throw new Error(error.message);
 
   const rows = ((data || []) as any[]).map((row) => ({
     ...row,
-    profiles: Array.isArray(row.profiles) ? row.profiles[0] || null : row.profiles,
+    profiles: Array.isArray(row.profiles)
+      ? row.profiles[0] || null
+      : row.profiles,
     lead_contracts: normalizeLeadContracts(row.lead_contracts),
   })) as ContractRow[];
+
+  const totalCount = count || rows.length;
 
   return {
     rows,
     stats: calcContractStats(rows),
+    count: totalCount,
+    page,
+    pageSize: CONTRACT_PAGE_SIZE,
+    totalPages: getTotalPages(totalCount),
   };
 }

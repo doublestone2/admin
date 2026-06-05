@@ -1,7 +1,49 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Hospital, InsuranceContact, PartnerCompany } from "@/types";
 
-export async function getInsuranceContacts(query = "") {
+export const CONTACT_PAGE_SIZE = 20;
+
+function getPageRange(page: number) {
+  const safePage = Math.max(1, Number(page || 1));
+  const from = (safePage - 1) * CONTACT_PAGE_SIZE;
+  const to = from + CONTACT_PAGE_SIZE - 1;
+
+  return {
+    page: safePage,
+    from,
+    to,
+  };
+}
+
+function getTotalPages(count: number) {
+  return Math.max(1, Math.ceil((count || 0) / CONTACT_PAGE_SIZE));
+}
+
+type ListInput =
+  | string
+  | {
+      query?: string;
+      page?: number;
+    };
+
+function normalizeListInput(input: ListInput = "") {
+  if (typeof input === "string") {
+    return {
+      query: input,
+      page: 1,
+    };
+  }
+
+  return {
+    query: input.query || "",
+    page: Math.max(1, Number(input.page || 1)),
+  };
+}
+
+export async function getInsuranceContacts(input: ListInput = "") {
+  const { query, page } = normalizeListInput(input);
+  const { from, to } = getPageRange(page);
+
   const supabase = createSupabaseServerClient();
 
   let q = supabase
@@ -29,11 +71,19 @@ export async function getInsuranceContacts(query = "") {
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   if (error) throw new Error(error.message);
 
-  return { rows: (data || []) as unknown as InsuranceContact[], count: count || 0 };
+  const totalCount = count || 0;
+
+  return {
+    rows: (data || []) as unknown as InsuranceContact[],
+    count: totalCount,
+    page,
+    pageSize: CONTACT_PAGE_SIZE,
+    totalPages: getTotalPages(totalCount),
+  };
 }
 
 export async function getInsuranceContact(id: string) {
@@ -51,7 +101,10 @@ export async function getInsuranceContact(id: string) {
   return data as InsuranceContact | null;
 }
 
-export async function getPartnerCompanies(query = "") {
+export async function getPartnerCompanies(input: ListInput = "") {
+  const { query, page } = normalizeListInput(input);
+  const { from, to } = getPageRange(page);
+
   const supabase = createSupabaseServerClient();
 
   let q = supabase
@@ -84,11 +137,19 @@ export async function getPartnerCompanies(query = "") {
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   if (error) throw new Error(error.message);
 
-  return { rows: (data || []) as unknown as PartnerCompany[], count: count || 0 };
+  const totalCount = count || 0;
+
+  return {
+    rows: (data || []) as unknown as PartnerCompany[],
+    count: totalCount,
+    page,
+    pageSize: CONTACT_PAGE_SIZE,
+    totalPages: getTotalPages(totalCount),
+  };
 }
 
 export async function getPartnerCompany(id: string) {
@@ -106,7 +167,10 @@ export async function getPartnerCompany(id: string) {
   return data as PartnerCompany | null;
 }
 
-export async function getHospitals(query = "") {
+export async function getHospitals(input: ListInput = "") {
+  const { query, page } = normalizeListInput(input);
+  const { from, to } = getPageRange(page);
+
   const supabase = createSupabaseServerClient();
 
   let q = supabase
@@ -143,11 +207,19 @@ export async function getHospitals(query = "") {
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   if (error) throw new Error(error.message);
 
-  return { rows: (data || []) as unknown as Hospital[], count: count || 0 };
+  const totalCount = count || 0;
+
+  return {
+    rows: (data || []) as unknown as Hospital[],
+    count: totalCount,
+    page,
+    pageSize: CONTACT_PAGE_SIZE,
+    totalPages: getTotalPages(totalCount),
+  };
 }
 
 export async function getHospital(id: string) {

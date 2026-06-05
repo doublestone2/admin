@@ -70,12 +70,16 @@ export default async function LeadsPage({
         profiles={profiles}
         staffNames={staffNames}
         role={profile.role}
+        totalCount={totalCount}
+        currentPage={currentPage}
+        pageSize={PAGE_SIZE}
       />
 
       <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 md:flex-row md:items-center md:justify-between">
         <div className="text-sm text-slate-400">
           총 <b className="text-white">{totalCount}</b>건 · 현재{" "}
-          <b className="text-white">{currentPage}</b> / {totalPages}페이지
+          <b className="text-white">{currentPage}</b> / {totalPages}페이지 ·
+          페이지당 {PAGE_SIZE}건
         </div>
 
         <div className="flex items-center gap-2">
