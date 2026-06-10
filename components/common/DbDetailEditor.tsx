@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { DbFileSection } from "@/components/common/DbFileSection";
+import type { TargetType } from "@/types";
 
 type FieldOption = {
   label: string;
@@ -74,7 +75,7 @@ export function DbDetailEditor({
   title: string;
   backHref: string;
   tableName: string;
-  targetType: string;
+  targetType: TargetType;
   record: any;
   fields: DetailField[];
   notes: DbNote[];
@@ -121,7 +122,6 @@ export function DbDetailEditor({
     }
 
     setMsg("정보가 저장되었습니다.");
-    router.refresh();
   }
 
   async function handleDelete() {
@@ -197,38 +197,35 @@ export function DbDetailEditor({
     setLocalNotes((prev) => [newNote, ...prev]);
     setMemo("");
     setMsg("메모가 추가되었습니다.");
-    router.refresh();
   }
 
   async function handleDeleteMemo(noteId: string) {
-  if (!confirm("메모를 삭제할까요?")) return;
+    if (!confirm("메모를 삭제할까요?")) return;
 
-  setPending(true);
-  setMsg(null);
+    setPending(true);
+    setMsg(null);
 
-  const response = await fetch("/api/db-notes/delete", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      id: noteId,
-    }),
-  });
+    const response = await fetch("/api/db-notes/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: noteId,
+      }),
+    });
 
-  const result = await response.json();
+    const result = await response.json();
+    setPending(false);
 
-  setPending(false);
+    if (!result.ok) {
+      setMsg(result.error || "메모 삭제 중 오류가 발생했습니다.");
+      return;
+    }
 
-  if (!result.ok) {
-    setMsg(result.error || "메모 삭제 중 오류가 발생했습니다.");
-    return;
+    setLocalNotes((prev) => prev.filter((note) => note.id !== noteId));
+    setMsg("메모가 삭제되었습니다.");
   }
-
-  setLocalNotes((prev) => prev.filter((note) => note.id !== noteId));
-  setMsg("메모가 삭제되었습니다.");
-  router.refresh();
-}
 
   return (
     <div className="space-y-6">
@@ -240,11 +237,11 @@ export function DbDetailEditor({
         <h1 className="mt-2 text-2xl font-black text-white">{title}</h1>
       </div>
 
-      {msg && (
+      {msg ? (
         <p className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-slate-200">
           {msg}
         </p>
-      )}
+      ) : null}
 
       <section className="card p-5">
         <div className="flex items-center justify-between gap-3">
@@ -306,9 +303,9 @@ export function DbDetailEditor({
           })}
 
           <div className="text-sm text-slate-400">
-            등록일: {formatDate(record.created_at)}
+            등록일 {formatDate(record.created_at)}
             <br />
-            수정일: {formatDate(record.updated_at)}
+            수정일 {formatDate(record.updated_at)}
           </div>
 
           <div className="flex justify-end md:col-span-2">
@@ -327,7 +324,7 @@ export function DbDetailEditor({
             className="input min-h-24"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            placeholder="메모를 입력하세요"
+            placeholder="메모를 입력하세요."
           />
 
           <button className="btn btn-primary" type="submit" disabled={pending}>

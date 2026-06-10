@@ -25,14 +25,13 @@ import { requireAuth } from "@/lib/auth/get-profile";
 
 export const dynamic = "force-dynamic";
 
-export default async function LeadDetail({
+export default async function LeadDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const profile = await requireAuth();
-
-  const [lead, notes, files, profiles, staffNames] = await Promise.all([
+  const [profile, lead, notes, files, profiles, staffNames] = await Promise.all([
+    requireAuth(),
     getLead(params.id),
     getLeadNotes(params.id),
     getDbFiles("LEAD", params.id),
@@ -67,12 +66,10 @@ export default async function LeadDetail({
       <div className="flex items-center justify-between">
         <div>
           <Link href="/admin/leads" className="text-sm text-blue-400">
-            목록으로
+            ← 목록으로
           </Link>
 
-          <h1 className="mt-2 text-2xl font-black text-white">
-            {lead.name}
-          </h1>
+          <h1 className="mt-2 text-2xl font-black text-white">{lead.name}</h1>
         </div>
 
         <StatusBadge status={lead.status} />
@@ -148,7 +145,7 @@ export default async function LeadDetail({
             <option value="">담당자 계정 선택</option>
             {profiles.map((person) => (
               <option key={person.id} value={person.id}>
-                {person.name}
+                {person.name || person.email || person.id}
               </option>
             ))}
           </select>
@@ -167,9 +164,9 @@ export default async function LeadDetail({
           </select>
 
           <div className="text-sm text-slate-400">
-            등록일: {formatKSTDateTime(lead.created_at)}
+            등록일 {formatKSTDateTime(lead.created_at)}
             <br />
-            수정일: {formatKSTDateTime(lead.updated_at)}
+            수정일 {formatKSTDateTime(lead.updated_at)}
           </div>
 
           <div className="flex justify-end md:col-span-2">
@@ -199,9 +196,7 @@ export default async function LeadDetail({
 
         <div className="mt-4 space-y-3">
           {notes.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              등록된 메모가 없습니다.
-            </p>
+            <p className="text-sm text-slate-500">등록된 메모가 없습니다.</p>
           ) : null}
 
           {notes.map((note) => (
