@@ -1,7 +1,8 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { ChangeEvent, FormEvent } from "react";
 
 type DbFile = {
   id: string;
@@ -49,6 +50,7 @@ export function DbFileSection({
   files: DbFile[];
 }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function DbFileSection({
     e.preventDefault();
 
     if (!selectedFile) {
-      setMsg("파일을 선택해주세요.");
+      setMsg("파일을 선택해 주세요.");
       return;
     }
 
@@ -91,6 +93,11 @@ export function DbFileSection({
     }
 
     setSelectedFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     setMsg("파일이 업로드되었습니다.");
     router.refresh();
   }
@@ -122,8 +129,12 @@ export function DbFileSection({
     <section className="card p-5">
       <h2 className="text-lg font-black text-white">첨부파일</h2>
 
-      <form onSubmit={handleUpload} className="mt-4 flex flex-col gap-3 md:flex-row">
+      <form
+        onSubmit={handleUpload}
+        className="mt-4 flex flex-col gap-3 md:flex-row"
+      >
         <input
+          ref={fileInputRef}
           type="file"
           name="file"
           onChange={handleFileChange}
@@ -135,13 +146,13 @@ export function DbFileSection({
         </button>
       </form>
 
-      {selectedFile && (
+      {selectedFile ? (
         <p className="mt-2 text-sm text-slate-300">
-          선택된 파일: {selectedFile.name}
+          선택한 파일: {selectedFile.name}
         </p>
-      )}
+      ) : null}
 
-      {msg && <p className="mt-3 text-sm text-slate-300">{msg}</p>}
+      {msg ? <p className="mt-3 text-sm text-slate-300">{msg}</p> : null}
 
       <div className="mt-5 space-y-2">
         {files.length === 0 ? (

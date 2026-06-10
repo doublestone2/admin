@@ -18,12 +18,12 @@ export async function POST(request: Request) {
     const formData = await request.formData();
 
     const file = formData.get("file");
-    const targetType = String(formData.get("targetType") || "");
-    const targetId = String(formData.get("targetId") || "");
+    const targetType = String(formData.get("targetType") || "").trim();
+    const targetId = String(formData.get("targetId") || "").trim();
 
     if (!(file instanceof File)) {
       return NextResponse.json(
-        { ok: false, error: "파일을 선택해주세요." },
+        { ok: false, error: "파일을 선택해 주세요." },
         { status: 400 }
       );
     }
@@ -37,10 +37,7 @@ export async function POST(request: Request) {
 
     const originalName = file.name || "첨부파일";
     const extension = getExtension(originalName);
-
-    const safeExtension = extension || "";
-    const storagePath = `${targetType}/${targetId}/${Date.now()}-${randomUUID()}${safeExtension}`;
-
+    const storagePath = `${targetType}/${targetId}/${Date.now()}-${randomUUID()}${extension}`;
     const contentType = file.type || "application/octet-stream";
     const arrayBuffer = await file.arrayBuffer();
 
