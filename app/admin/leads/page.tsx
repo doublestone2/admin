@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { LeadTable } from "@/components/leads/LeadTable";
-import { getLeads, getProfilesForSelect, LEAD_PAGE_SIZE } from "@/lib/data/leads";
+import { getLeads, LEAD_PAGE_SIZE } from "@/lib/data/leads";
 import { getStaffNameOptions } from "@/lib/data/settings";
 import { requireAuth } from "@/lib/auth/get-profile";
 import { ListSearchBar } from "@/components/common/ListSearchBar";
@@ -27,21 +27,19 @@ export default async function LeadsPage({
     page?: string;
   };
 }) {
-  const profile = await requireAuth();
-
   const currentPage = Math.max(1, Number(searchParams.page || 1) || 1);
-  const q = searchParams.q || "";
+  const q = String(searchParams.q || "").trim();
   const field = searchParams.field || "all";
   const status = searchParams.status || "";
 
-  const [data, profiles, staffNames] = await Promise.all([
+  const [profile, data, staffNames] = await Promise.all([
+    requireAuth(),
     getLeads({
       query: q,
       field,
       status,
       page: currentPage,
     }),
-    getProfilesForSelect(),
     getStaffNameOptions(),
   ]);
 
@@ -65,7 +63,6 @@ export default async function LeadsPage({
 
       <LeadTable
         rows={data.rows}
-        profiles={profiles}
         staffNames={staffNames}
         role={profile.role}
         totalCount={totalCount}

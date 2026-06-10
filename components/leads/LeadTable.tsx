@@ -16,11 +16,9 @@ import {
 } from "@/lib/utils/constants";
 import { formatKSTDateTime } from "@/lib/utils/date";
 import type { LeadRow } from "@/lib/data/leads";
-import type { Profile } from "@/types";
 
 type LeadTableProps = {
   rows: LeadRow[];
-  profiles: Profile[];
   staffNames: string[];
   role: string;
   totalCount?: number;
@@ -30,7 +28,6 @@ type LeadTableProps = {
 
 export function LeadTable({
   rows,
-  profiles,
   staffNames,
   role,
   totalCount = rows.length,
