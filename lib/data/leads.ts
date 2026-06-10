@@ -33,19 +33,17 @@ async function getLeadIdsByMemo(query: string) {
     .select("lead_id")
     .ilike("content", `%${query}%`)
     .is("deleted_at", null)
-    .limit(1000);
+    .limit(500);
 
   if (error) throw new Error(error.message);
 
-  const ids = Array.from(
+  return Array.from(
     new Set(
       ((data || []) as any[])
         .map((row) => row.lead_id)
         .filter(Boolean)
     )
   );
-
-  return ids;
 }
 
 function buildLeadTextFilter(query: string, field: LeadSearchField) {
@@ -122,7 +120,7 @@ export async function getLeads({
       manager_name,
       profiles:assigned_to(name,email)
     `,
-      { count: "exact" }
+      { count: "planned" }
     )
     .is("deleted_at", null);
 
@@ -153,6 +151,7 @@ export async function getLeads({
   const rows = ((data || []) as any[]).map((row) => ({
     ...row,
     profiles: normalizeProfile(row),
+    latest_note: null,
   })) as LeadRow[];
 
   const ids = rows.map((row) => row.id);
@@ -164,7 +163,7 @@ export async function getLeads({
       .in("lead_id", ids)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(100);
 
     const latest = new Map<string, string>();
 
@@ -249,5 +248,5 @@ export async function getProfilesForSelect(): Promise<Profile[]> {
     .is("deleted_at", null)
     .order("name");
 
-  return (data || []) as Profile[];
+  return (data || []) as unknown as Profile[];
 }
