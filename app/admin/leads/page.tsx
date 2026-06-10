@@ -12,7 +12,7 @@ const SEARCH_OPTIONS = [
   { label: "전체", value: "all" },
   { label: "이름", value: "name" },
   { label: "전화번호", value: "phone" },
-  { label: "상대보험사", value: "insurance_company" },
+  { label: "상대 보험사", value: "insurance_company" },
   { label: "담당자", value: "manager_name" },
   { label: "메모", value: "memo" },
 ];

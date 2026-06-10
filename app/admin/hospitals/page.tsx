@@ -10,14 +10,14 @@ export const dynamic = "force-dynamic";
 
 const SEARCH_OPTIONS = [
   { label: "전체", value: "all" },
-  { label: "업체명", value: "company_name" },
+  { label: "병원명", value: "company_name" },
   { label: "지역", value: "region" },
   { label: "전화번호", value: "phone" },
   { label: "담당자", value: "manager_name" },
   { label: "메모", value: "memo" },
 ];
 
-export default async function Page({
+export default async function HospitalsPage({
   searchParams,
 }: {
   searchParams: {
@@ -26,13 +26,12 @@ export default async function Page({
     page?: string;
   };
 }) {
-  const profile = await requireAuth();
-
-  const q = searchParams.q || "";
+  const q = String(searchParams.q || "").trim();
   const field = searchParams.field || "all";
   const currentPage = Math.max(1, Number(searchParams.page || 1) || 1);
 
-  const [data, staffNames] = await Promise.all([
+  const [profile, data, staffNames] = await Promise.all([
+    requireAuth(),
     getHospitals({
       query: q,
       field,

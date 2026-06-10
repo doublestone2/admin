@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Hospital, InsuranceContact, PartnerCompany } from "@/types";
 
-export const CONTACT_PAGE_SIZE = 20;
+export const CONTACT_PAGE_SIZE = 15;
 
 type ContactSearchField =
   | "all"

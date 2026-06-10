@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Lead, LeadNoteWithAuthor, Profile } from "@/types";
 
-export const LEAD_PAGE_SIZE = 20;
+export const LEAD_PAGE_SIZE = 15;
 
 export type LeadRow = Lead & {
   profiles?: { name: string; email: string | null } | null;
@@ -214,7 +214,7 @@ export async function getLeadNotes(leadId: string) {
 
   return ((data || []) as any[]).map((note) => ({
     ...note,
-    profiles: normalizeProfile(note) || { name: "알 수 없음", email: null },
+    profiles: normalizeProfile(note) || { name: "작성자 없음", email: null },
   })) as LeadNoteWithAuthor[];
 }
 

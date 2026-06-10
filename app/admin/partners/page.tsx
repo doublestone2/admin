@@ -17,7 +17,7 @@ const SEARCH_OPTIONS = [
   { label: "메모", value: "memo" },
 ];
 
-export default async function Page({
+export default async function PartnersPage({
   searchParams,
 }: {
   searchParams: {
@@ -26,13 +26,12 @@ export default async function Page({
     page?: string;
   };
 }) {
-  const profile = await requireAuth();
-
-  const q = searchParams.q || "";
+  const q = String(searchParams.q || "").trim();
   const field = searchParams.field || "all";
   const currentPage = Math.max(1, Number(searchParams.page || 1) || 1);
 
-  const [data, staffNames] = await Promise.all([
+  const [profile, data, staffNames] = await Promise.all([
+    requireAuth(),
     getPartnerCompanies({
       query: q,
       field,
@@ -49,7 +48,7 @@ export default async function Page({
     <>
       <PageHeader
         title="제휴업체 DB"
-        description="배달대행 지사, 협력업체, 단체 정보를 관리합니다."
+        description="배달대행 지사, 협력업체, 업체 정보를 관리합니다."
       />
 
       <ListSearchBar
