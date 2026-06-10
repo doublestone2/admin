@@ -120,7 +120,7 @@ export async function getLeads({
       manager_name,
       profiles:assigned_to(name,email)
     `,
-      { count: "planned" }
+      { count: "exact" }
     )
     .is("deleted_at", null);
 
