@@ -6,6 +6,7 @@ export const LEAD_PAGE_SIZE = 20;
 export type LeadRow = Lead & {
   profiles?: { name: string; email: string | null } | null;
   latest_note?: string | null;
+  latest_note_at?: string | null;
 };
 
 type LeadSearchField =
@@ -118,6 +119,8 @@ export async function getLeads({
       status,
       assigned_to,
       manager_name,
+      latest_note,
+      latest_note_at,
       profiles:assigned_to(name,email)
     `,
       { count: "exact" }
@@ -151,32 +154,9 @@ export async function getLeads({
   const rows = ((data || []) as any[]).map((row) => ({
     ...row,
     profiles: normalizeProfile(row),
-    latest_note: null,
+    latest_note: row.latest_note || null,
+    latest_note_at: row.latest_note_at || null,
   })) as LeadRow[];
-
-  const ids = rows.map((row) => row.id);
-
-  if (ids.length) {
-    const { data: notes } = await supabase
-      .from("lead_notes")
-      .select("id,lead_id,content,created_at")
-      .in("lead_id", ids)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    const latest = new Map<string, string>();
-
-    ((notes || []) as any[]).forEach((note) => {
-      if (!latest.has(note.lead_id)) {
-        latest.set(note.lead_id, note.content);
-      }
-    });
-
-    rows.forEach((row) => {
-      row.latest_note = latest.get(row.id) || null;
-    });
-  }
 
   const totalCount = count || 0;
 

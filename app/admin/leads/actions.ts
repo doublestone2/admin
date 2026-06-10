@@ -10,6 +10,36 @@ function getRawText(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
 }
 
+async function syncLeadLatestNote(supabase: any, leadId: string) {
+  const { data: latestNote, error: noteError } = await supabase
+    .from("lead_notes")
+    .select("content,created_at")
+    .eq("lead_id", leadId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (noteError) {
+    return { ok: false, error: noteError.message };
+  }
+
+  const { error: updateError } = await supabase
+    .from("leads")
+    .update({
+      latest_note: latestNote?.content || null,
+      latest_note_at: latestNote?.created_at || null,
+    })
+    .eq("id", leadId)
+    .is("deleted_at", null);
+
+  if (updateError) {
+    return { ok: false, error: updateError.message };
+  }
+
+  return { ok: true };
+}
+
 export async function createLeadAction(formData: FormData) {
   const profile = await requireAuth();
 
@@ -22,6 +52,8 @@ export async function createLeadAction(formData: FormData) {
 
   const assigned = cleanText(formData.get("assigned_to"));
   const managerName = cleanText(formData.get("manager_name"));
+  const memo = cleanText(formData.get("memo"));
+  const now = new Date().toISOString();
 
   const supabase = createSupabaseServerClient();
 
@@ -36,20 +68,23 @@ export async function createLeadAction(formData: FormData) {
       status: cleanText(formData.get("status")) || "NEW",
       assigned_to: assigned || null,
       manager_name: managerName || null,
+      latest_note: memo || null,
+      latest_note_at: memo ? now : null,
     })
     .select("id")
     .single();
 
   if (error) return { ok: false, error: error.message };
 
-  const memo = cleanText(formData.get("memo"));
-
   if (memo) {
-    await supabase.from("lead_notes").insert({
+    const { error: noteError } = await supabase.from("lead_notes").insert({
       lead_id: data.id,
       author_id: profile.id,
       content: memo,
+      created_at: now,
     });
+
+    if (noteError) return { ok: false, error: noteError.message };
   }
 
   revalidatePath("/admin/leads");
@@ -108,22 +143,31 @@ export async function upsertLeadNoteAction(formData: FormData) {
 
   const supabase = createSupabaseServerClient();
   const noteId = cleanText(formData.get("note_id"));
+  const now = new Date().toISOString();
 
   const result = noteId
     ? await supabase
         .from("lead_notes")
         .update({
           content,
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         })
         .eq("id", noteId)
+        .eq("lead_id", leadId)
     : await supabase.from("lead_notes").insert({
         lead_id: leadId,
         author_id: profile.id,
         content,
+        created_at: now,
       });
 
   if (result.error) return { ok: false, error: result.error.message };
+
+  const syncResult = await syncLeadLatestNote(supabase, leadId);
+
+  if (!syncResult.ok) {
+    return { ok: false, error: syncResult.error };
+  }
 
   revalidatePath("/admin/leads");
   revalidatePath(`/admin/leads/${leadId}`);
@@ -142,17 +186,24 @@ export async function deleteLeadNoteAction(formData: FormData) {
   }
 
   const supabase = createSupabaseServerClient();
+  const now = new Date().toISOString();
 
   const { error } = await supabase
     .from("lead_notes")
     .update({
-      deleted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      deleted_at: now,
+      updated_at: now,
     })
     .eq("id", noteId)
     .eq("lead_id", leadId);
 
   if (error) return { ok: false, error: error.message };
+
+  const syncResult = await syncLeadLatestNote(supabase, leadId);
+
+  if (!syncResult.ok) {
+    return { ok: false, error: syncResult.error };
+  }
 
   revalidatePath("/admin/leads");
   revalidatePath(`/admin/leads/${leadId}`);
