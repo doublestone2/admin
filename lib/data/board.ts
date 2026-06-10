@@ -17,13 +17,12 @@ export async function getBoardPosts() {
       `
       id,
       title,
-      content,
+      category,
       author_id,
       is_notice,
       pin_order,
       created_at,
       updated_at,
-      deleted_at,
       profiles:author_id(name,email)
     `
     )
@@ -31,7 +30,7 @@ export async function getBoardPosts() {
     .order("is_notice", { ascending: false })
     .order("pin_order", { ascending: true })
     .order("created_at", { ascending: false })
-    .range(0, 99);
+    .range(0, 49);
 
   if (error) throw new Error(error.message);
 
@@ -43,7 +42,21 @@ export async function getBoardPost(id: string) {
 
   const { data, error } = await supabase
     .from("board_posts")
-    .select("*,profiles:author_id(name,email)")
+    .select(
+      `
+      id,
+      title,
+      content,
+      category,
+      author_id,
+      is_notice,
+      pin_order,
+      created_at,
+      updated_at,
+      deleted_at,
+      profiles:author_id(name,email)
+    `
+    )
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();

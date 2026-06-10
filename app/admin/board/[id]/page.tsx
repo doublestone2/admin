@@ -8,7 +8,7 @@ import { deleteBoardPostAction, toggleNoticeAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function PostDetail({
+export default async function BoardPostDetailPage({
   params,
 }: {
   params: { id: string };
@@ -22,6 +22,7 @@ export default async function PostDetail({
   if (!post) notFound();
 
   const canEdit = profile.role === "ADMIN" || post.author_id === profile.id;
+  const isAdmin = profile.role === "ADMIN";
 
   async function handleDeleteBoardPost(formData: FormData): Promise<void> {
     "use server";
@@ -64,13 +65,11 @@ export default async function PostDetail({
       <article className="card p-6">
         <div className="mb-4 flex items-center gap-2">
           <span className="badge bg-slate-700 text-slate-200">
-            {post.category}
+            {post.category || "일반"}
           </span>
 
           {post.is_notice ? (
-            <span className="badge bg-blue-500/20 text-blue-200">
-              공지
-            </span>
+            <span className="badge bg-blue-500/20 text-blue-200">공지</span>
           ) : null}
         </div>
 
@@ -80,7 +79,7 @@ export default async function PostDetail({
           {post.profiles?.name || "-"} · {formatKSTDateTime(post.created_at)}
         </p>
 
-        {profile.role === "ADMIN" ? (
+        {isAdmin ? (
           <form action={handleToggleNotice} className="mt-4">
             <input type="hidden" name="id" value={post.id} />
 
@@ -88,7 +87,7 @@ export default async function PostDetail({
               <input
                 type="checkbox"
                 name="is_notice"
-                defaultChecked={post.is_notice}
+                defaultChecked={Boolean(post.is_notice)}
               />
               공지로 상단 고정
             </label>

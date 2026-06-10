@@ -17,8 +17,7 @@ export function BoardPostForm({ post }: { post?: BoardPost | null }) {
     await createBoardPostAction(formData);
   }
 
-  const defaultCategory =
-    post?.category || BOARD_CATEGORIES[0] || "일반";
+  const defaultCategory = post?.category || BOARD_CATEGORIES[0] || "일반";
 
   return (
     <form action={handleSubmit} className="card grid gap-4 p-5">
@@ -32,11 +31,7 @@ export function BoardPostForm({ post }: { post?: BoardPost | null }) {
         required
       />
 
-      <select
-        className="input"
-        name="category"
-        defaultValue={defaultCategory}
-      >
+      <select className="input" name="category" defaultValue={defaultCategory}>
         {BOARD_CATEGORIES.map((category) => (
           <option key={category} value={category}>
             {category}
