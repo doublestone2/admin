@@ -1,18 +1,6 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import {
-  createContactAction,
-  deleteContactAction,
-  updateContactAction,
-} from "@/app/admin/contacts/actions";
-import { Modal } from "@/components/common/Modal";
-import {
-  CONTRACT_STATUS_OPTIONS,
-  HOSPITAL_TYPES,
-  PARTNERSHIP_STATUS_OPTIONS,
-} from "@/lib/utils/constants";
+import Link from "next/link";
+import { ContactCreateButton } from "@/components/contacts/ContactCreateButton";
+import { ContactRowActions } from "@/components/contacts/ContactRowActions";
 import { formatKSTDateTime } from "@/lib/utils/date";
 
 type Kind = "insurance" | "partner" | "hospital";
@@ -27,6 +15,12 @@ type ContactTableProps = {
   pageSize?: number;
 };
 
+function getBase(kind: Kind) {
+  if (kind === "insurance") return "/admin/insurance";
+  if (kind === "partner") return "/admin/partners";
+  return "/admin/hospitals";
+}
+
 export function ContactTable({
   kind,
   rows,
@@ -36,104 +30,15 @@ export function ContactTable({
   currentPage = 1,
   pageSize = 20,
 }: ContactTableProps) {
-  const router = useRouter();
-
-  const [open, setOpen] = useState(false);
-  const [edit, setEdit] = useState<any | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  const base =
-    kind === "insurance"
-      ? "/admin/insurance"
-      : kind === "partner"
-        ? "/admin/partners"
-        : "/admin/hospitals";
-
-  const title =
-    kind === "insurance"
-      ? "보험사"
-      : kind === "partner"
-        ? "제휴업체"
-        : "병원";
+  const base = getBase(kind);
 
   function getRowNumber(index: number) {
     return totalCount - ((currentPage - 1) * pageSize + index);
   }
 
-  function handleOpenCreate() {
-    setMsg(null);
-    setEdit(null);
-    setOpen(true);
-  }
-
-  function handleOpenEdit(row: any) {
-    setMsg(null);
-    setEdit(row);
-    setOpen(true);
-  }
-
-  function handleCloseModal() {
-    setOpen(false);
-    setEdit(null);
-  }
-
-  function handleSubmit(formData: FormData) {
-    startTransition(async () => {
-      const result = edit
-        ? await updateContactAction(kind, formData)
-        : await createContactAction(kind, formData);
-
-      if (result.ok) {
-        setOpen(false);
-        setEdit(null);
-        setMsg("저장되었습니다.");
-        router.refresh();
-        return;
-      }
-
-      setMsg(result.error ?? "저장에 실패했습니다.");
-    });
-  }
-
-  function handleDelete(id: string) {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
-
-    const formData = new FormData();
-    formData.set("id", id);
-
-    startTransition(async () => {
-      const result = await deleteContactAction(kind, formData);
-
-      setMsg(
-        result.ok
-          ? "삭제되었습니다."
-          : result.error ?? "삭제에 실패했습니다."
-      );
-
-      if (result.ok) {
-        router.refresh();
-      }
-    });
-  }
-
   return (
     <>
-      <div className="mb-4 flex justify-end">
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={handleOpenCreate}
-        >
-          {title} 추가
-        </button>
-      </div>
-
-      {msg ? (
-        <p className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-300">
-          {msg}
-        </p>
-      ) : null}
+      <ContactCreateButton kind={kind} staffNames={staffNames} />
 
       <div className="overflow-hidden rounded-xl border border-slate-800">
         <table className="w-full text-sm">
@@ -193,11 +98,7 @@ export function ContactTable({
             ) : null}
 
             {rows.map((row: any, index: number) => (
-              <tr
-                key={row.id}
-                className="table-row-clickable cursor-pointer hover:bg-slate-900/70"
-                onClick={() => router.push(`${base}/${row.id}`)}
-              >
+              <tr key={row.id} className="hover:bg-slate-900/70">
                 <td className="p-3 font-semibold text-slate-300">
                   {getRowNumber(index)}
                 </td>
@@ -208,7 +109,12 @@ export function ContactTable({
                       {formatKSTDateTime(row.created_at)}
                     </td>
                     <td className="p-3 font-bold text-white">
-                      {row.insurance_company || "-"}
+                      <Link
+                        href={`${base}/${row.id}`}
+                        className="hover:text-blue-400 hover:underline"
+                      >
+                        {row.insurance_company || "-"}
+                      </Link>
                     </td>
                     <td className="p-3">{row.manager_name || "-"}</td>
                     <td className="p-3">{row.position || "-"}</td>
@@ -225,7 +131,12 @@ export function ContactTable({
                       {formatKSTDateTime(row.created_at)}
                     </td>
                     <td className="p-3 font-bold text-white">
-                      {row.company_name || row.name || "-"}
+                      <Link
+                        href={`${base}/${row.id}`}
+                        className="hover:text-blue-400 hover:underline"
+                      >
+                        {row.company_name || row.name || "-"}
+                      </Link>
                     </td>
                     <td className="p-3">{row.region || "-"}</td>
                     <td className="p-3">{row.phone || "-"}</td>
@@ -243,7 +154,12 @@ export function ContactTable({
                       {formatKSTDateTime(row.created_at)}
                     </td>
                     <td className="p-3 font-bold text-white">
-                      {row.hospital_name || row.name || "-"}
+                      <Link
+                        href={`${base}/${row.id}`}
+                        className="hover:text-blue-400 hover:underline"
+                      >
+                        {row.hospital_name || row.name || "-"}
+                      </Link>
                     </td>
                     <td className="p-3">{row.region || "-"}</td>
                     <td className="p-3">{row.hospital_type || "-"}</td>
@@ -258,224 +174,18 @@ export function ContactTable({
                 ) : null}
 
                 <td className="p-3 text-right">
-                  <button
-                    className="btn btn-secondary mr-2"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleOpenEdit(row);
-                    }}
-                  >
-                    수정
-                  </button>
-
-                  {role === "ADMIN" ? (
-                    <button
-                      className="btn btn-danger"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleDelete(row.id);
-                      }}
-                    >
-                      삭제
-                    </button>
-                  ) : null}
+                  <ContactRowActions
+                    kind={kind}
+                    row={row}
+                    staffNames={staffNames}
+                    role={role}
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      <Modal
-        open={open}
-        onClose={handleCloseModal}
-        title={`${title} ${edit ? "수정" : "추가"}`}
-      >
-        <form action={handleSubmit} className="grid gap-3">
-          <input type="hidden" name="id" value={edit?.id || ""} />
-
-          {kind === "insurance" ? (
-            <>
-              <input
-                className="input"
-                name="insurance_company"
-                defaultValue={edit?.insurance_company || ""}
-                placeholder="보험사명"
-              />
-
-              <input
-                className="input"
-                name="manager_name"
-                defaultValue={edit?.manager_name || ""}
-                placeholder="담당자 이름"
-              />
-
-              <input
-                className="input"
-                name="position"
-                defaultValue={edit?.position || ""}
-                placeholder="직급"
-              />
-
-              <input
-                className="input"
-                name="phone"
-                defaultValue={edit?.phone || ""}
-                placeholder="전화번호"
-              />
-            </>
-          ) : null}
-
-          {kind === "partner" ? (
-            <>
-              <input
-                className="input"
-                name="company_name"
-                defaultValue={edit?.company_name || ""}
-                placeholder="업체명"
-              />
-
-              <input
-                className="input"
-                name="region"
-                defaultValue={edit?.region || ""}
-                placeholder="지역"
-              />
-
-              <input
-                className="input"
-                name="phone"
-                defaultValue={edit?.phone || ""}
-                placeholder="연락처"
-              />
-
-              <select
-                className="input"
-                name="contract_status"
-                defaultValue={edit?.contract_status || "미계약"}
-              >
-                {CONTRACT_STATUS_OPTIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                className="input"
-                name="manager_name"
-                defaultValue={edit?.manager_name || ""}
-              >
-                <option value="">담당자 선택</option>
-                {staffNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : null}
-
-          {kind === "hospital" ? (
-            <>
-              <input
-                className="input"
-                name="hospital_name"
-                defaultValue={edit?.hospital_name || ""}
-                placeholder="병원명"
-              />
-
-              <input
-                className="input"
-                name="region"
-                defaultValue={edit?.region || ""}
-                placeholder="지역"
-              />
-
-              <select
-                className="input"
-                name="hospital_type"
-                defaultValue={edit?.hospital_type || "기타"}
-              >
-                {HOSPITAL_TYPES.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                className="input"
-                name="manager_name"
-                defaultValue={edit?.manager_name || ""}
-                placeholder="담당자 이름"
-              />
-
-              <input
-                className="input"
-                name="position"
-                defaultValue={edit?.position || ""}
-                placeholder="직급/부서"
-              />
-
-              <input
-                className="input"
-                name="phone"
-                defaultValue={edit?.phone || ""}
-                placeholder="연락처"
-              />
-
-              <select
-                className="input"
-                name="partnership_status"
-                defaultValue={edit?.partnership_status || "미접촉"}
-              >
-                {PARTNERSHIP_STATUS_OPTIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                className="input"
-                name="internal_manager_name"
-                defaultValue={edit?.internal_manager_name || ""}
-              >
-                <option value="">내부 담당자 선택</option>
-                {staffNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : null}
-
-          <textarea
-            className="input min-h-24"
-            name="memo"
-            defaultValue={edit?.memo || ""}
-            placeholder="메모"
-          />
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleCloseModal}
-            >
-              취소
-            </button>
-
-            <button className="btn btn-primary" type="submit" disabled={pending}>
-              {pending ? "처리 중..." : "확인"}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </>
   );
 }

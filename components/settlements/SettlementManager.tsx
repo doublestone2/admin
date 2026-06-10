@@ -73,7 +73,7 @@ function makeEmptyForm(): FormState {
     staff_name: "",
     contract_date: "",
     settlement_date: getKstToday(),
-    status: "종결",
+    status: "입금완료",
     final_settlement_amount: "",
     fee_amount: "",
     memo: "",
@@ -113,15 +113,14 @@ export function SettlementManager() {
   }, [startDate, endDate]);
 
   const summary = useMemo(() => {
-    const contractRows = rows.filter((row) => row.status !== "환불");
-    const closedRows = rows.filter((row) => row.status === "종결");
+    const paidRows = rows.filter((row) => row.status === "입금완료");
 
-    const totalSettlement = closedRows.reduce(
+    const totalSettlement = paidRows.reduce(
       (sum, row) => sum + Number(row.final_settlement_amount || 0),
       0
     );
 
-    const totalFee = closedRows.reduce(
+    const totalFee = paidRows.reduce(
       (sum, row) => sum + Number(row.fee_amount || 0),
       0
     );
@@ -130,8 +129,8 @@ export function SettlementManager() {
       string,
       {
         staff_name: string;
-        contract_count: number;
-        closed_count: number;
+        paid_count: number;
+        refund_count: number;
         total_settlement: number;
         total_fee: number;
       }
@@ -143,8 +142,8 @@ export function SettlementManager() {
       if (!staffMap.has(name)) {
         staffMap.set(name, {
           staff_name: name,
-          contract_count: 0,
-          closed_count: 0,
+          paid_count: 0,
+          refund_count: 0,
           total_settlement: 0,
           total_fee: 0,
         });
@@ -152,24 +151,24 @@ export function SettlementManager() {
 
       const item = staffMap.get(name)!;
 
-      if (row.status !== "환불") {
-        item.contract_count += 1;
-      }
-
-      if (row.status === "종결") {
-        item.closed_count += 1;
+      if (row.status === "입금완료") {
+        item.paid_count += 1;
         item.total_settlement += Number(row.final_settlement_amount || 0);
         item.total_fee += Number(row.fee_amount || 0);
+      }
+
+      if (row.status === "환불") {
+        item.refund_count += 1;
       }
     });
 
     return {
-      contract_count: contractRows.length,
-      closed_count: closedRows.length,
+      paid_count: paidRows.length,
+      refund_count: rows.filter((row) => row.status === "환불").length,
       total_settlement: totalSettlement,
       total_fee: totalFee,
       staff: Array.from(staffMap.values()),
-      closedRows,
+      paidRows,
     };
   }, [rows]);
 
@@ -186,7 +185,7 @@ export function SettlementManager() {
       staff_name: row.staff_name || "",
       contract_date: row.contract_date || "",
       settlement_date: row.settlement_date || getKstToday(),
-      status: row.status || "종결",
+      status: row.status || "입금완료",
       final_settlement_amount: String(row.final_settlement_amount || ""),
       fee_amount: String(row.fee_amount || ""),
       memo: row.memo || "",
@@ -199,17 +198,17 @@ export function SettlementManager() {
     e.preventDefault();
 
     if (!form.client_name.trim()) {
-      setMsg("고객명을 입력해주세요.");
+      setMsg("고객명을 입력해 주세요.");
       return;
     }
 
     if (!form.staff_name.trim()) {
-      setMsg("담당자를 입력해주세요.");
+      setMsg("담당자를 입력해 주세요.");
       return;
     }
 
     if (!form.settlement_date) {
-      setMsg("종결일 또는 정산일을 선택해주세요.");
+      setMsg("입금일 또는 정산일을 선택해 주세요.");
       return;
     }
 
@@ -269,7 +268,7 @@ export function SettlementManager() {
       <div>
         <h1 className="text-2xl font-black text-white">정산관리</h1>
         <p className="mt-1 text-sm text-slate-400">
-          기간별 계약, 종결, 합의금, 수수료를 관리합니다.
+          기간별 입금완료, 환불, 합의금, 수수료를 관리합니다.
         </p>
       </div>
 
@@ -315,24 +314,24 @@ export function SettlementManager() {
         </div>
       </section>
 
-      {msg && (
+      {msg ? (
         <p className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-slate-200">
           {msg}
         </p>
-      )}
+      ) : null}
 
       <section className="grid gap-3 md:grid-cols-4">
         <div className="card p-5">
-          <p className="text-sm text-slate-400">계약수</p>
+          <p className="text-sm text-slate-400">입금완료</p>
           <p className="mt-2 text-2xl font-black text-white">
-            {summary.contract_count.toLocaleString("ko-KR")}건
+            {summary.paid_count.toLocaleString("ko-KR")}건
           </p>
         </div>
 
         <div className="card p-5">
-          <p className="text-sm text-slate-400">종결수</p>
+          <p className="text-sm text-slate-400">환불</p>
           <p className="mt-2 text-2xl font-black text-white">
-            {summary.closed_count.toLocaleString("ko-KR")}건
+            {summary.refund_count.toLocaleString("ko-KR")}건
           </p>
         </div>
 
@@ -363,9 +362,6 @@ export function SettlementManager() {
             onChange={(e) => updateForm("case_type", e.target.value)}
           >
             <option value="교통사고">교통사고</option>
-            <option value="불법사채">불법사채</option>
-            <option value="개인회생">개인회생</option>
-            <option value="기타">기타</option>
           </select>
 
           <input
@@ -408,8 +404,7 @@ export function SettlementManager() {
             value={form.status}
             onChange={(e) => updateForm("status", e.target.value)}
           >
-            <option value="계약">계약</option>
-            <option value="종결">종결</option>
+            <option value="입금완료">입금완료</option>
             <option value="환불">환불</option>
           </select>
 
@@ -437,7 +432,7 @@ export function SettlementManager() {
           />
 
           <div className="flex justify-end gap-2 md:col-span-3">
-            {form.id && (
+            {form.id ? (
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -445,10 +440,10 @@ export function SettlementManager() {
               >
                 수정 취소
               </button>
-            )}
+            ) : null}
 
             <button className="btn btn-primary" disabled={pending}>
-              {form.id ? "수정 저장" : "정산 추가"}
+              {form.id ? "수정 완료" : "정산 추가"}
             </button>
           </div>
         </form>
@@ -462,8 +457,8 @@ export function SettlementManager() {
             <thead className="bg-slate-900 text-slate-400">
               <tr>
                 <th className="p-3 text-left">직원명</th>
-                <th className="p-3 text-right">계약 건수</th>
-                <th className="p-3 text-right">종결 건수</th>
+                <th className="p-3 text-right">입금완료</th>
+                <th className="p-3 text-right">환불</th>
                 <th className="p-3 text-right">총 합의금</th>
                 <th className="p-3 text-right">총 수수료</th>
               </tr>
@@ -475,8 +470,8 @@ export function SettlementManager() {
                   <td className="p-3 font-semibold text-white">
                     {staff.staff_name}
                   </td>
-                  <td className="p-3 text-right">{staff.contract_count}건</td>
-                  <td className="p-3 text-right">{staff.closed_count}건</td>
+                  <td className="p-3 text-right">{staff.paid_count}건</td>
+                  <td className="p-3 text-right">{staff.refund_count}건</td>
                   <td className="p-3 text-right">
                     {money(staff.total_settlement)}
                   </td>
@@ -484,26 +479,26 @@ export function SettlementManager() {
                 </tr>
               ))}
 
-              {summary.staff.length === 0 && (
+              {summary.staff.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-4 text-center text-slate-500">
                     조회된 정산 내역이 없습니다.
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>
       </section>
 
       <section className="card p-5">
-        <h2 className="text-lg font-black text-white">종결된 DB</h2>
+        <h2 className="text-lg font-black text-white">입금완료 DB</h2>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-slate-800">
           <table className="w-full text-sm">
             <thead className="bg-slate-900 text-slate-400">
               <tr>
-                <th className="p-3 text-left">종결일</th>
+                <th className="p-3 text-left">입금일</th>
                 <th className="p-3 text-left">구분</th>
                 <th className="p-3 text-left">고객명</th>
                 <th className="p-3 text-left">연락처</th>
@@ -516,7 +511,7 @@ export function SettlementManager() {
             </thead>
 
             <tbody className="divide-y divide-slate-800">
-              {summary.closedRows.map((row) => (
+              {summary.paidRows.map((row) => (
                 <tr key={row.id}>
                   <td className="p-3">{row.settlement_date}</td>
                   <td className="p-3">{row.case_type}</td>
@@ -539,20 +534,23 @@ export function SettlementManager() {
                     >
                       수정
                     </button>
-                    <button className="btn btn-danger" onClick={() => remove(row.id)}>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => remove(row.id)}
+                    >
                       삭제
                     </button>
                   </td>
                 </tr>
               ))}
 
-              {summary.closedRows.length === 0 && (
+              {summary.paidRows.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="p-4 text-center text-slate-500">
-                    종결된 정산 내역이 없습니다.
+                    입금완료 정산 내역이 없습니다.
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>
