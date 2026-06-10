@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body>
         {children}
-        <SpeedInsights debug sampleRate={1} />
+        <SpeedInsights />
       </body>
     </html>
   );
