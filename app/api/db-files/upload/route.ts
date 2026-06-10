@@ -28,13 +28,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (file.size === 0) {
-      return NextResponse.json(
-        { ok: false, error: "빈 파일은 업로드할 수 없습니다." },
-        { status: 400 }
-      );
-    }
-
     if (!targetType || !targetId) {
       return NextResponse.json(
         { ok: false, error: "파일 연결 대상 정보가 없습니다." },
@@ -44,7 +37,9 @@ export async function POST(request: Request) {
 
     const originalName = file.name || "첨부파일";
     const extension = getExtension(originalName);
-    const storagePath = `${targetType}/${targetId}/${Date.now()}-${randomUUID()}${extension}`;
+
+    const safeExtension = extension || "";
+    const storagePath = `${targetType}/${targetId}/${Date.now()}-${randomUUID()}${safeExtension}`;
 
     const contentType = file.type || "application/octet-stream";
     const arrayBuffer = await file.arrayBuffer();
