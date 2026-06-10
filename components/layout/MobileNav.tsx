@@ -11,7 +11,9 @@ export function MobileNav({ profile }: { profile: Profile }) {
     ["/admin/partners", "제휴업체 DB"], ["/admin/hospitals", "병원 DB"], ["/admin/contracts", "계약현황"],
     ["/admin/settlements", "정산관리"], ["/admin/board", "자료공유"], ["/admin/account", "내 계정"]
   ];
-  if (profile.role === "ADMIN") { links.splice(8,0,["/admin/staff","직원관리"],["/admin/settings","설정"]); }
+  if (profile.role === "ADMIN") {
+  links.splice(8, 0, ["/admin/staff", "직원관리"]);
+}
   return <div className="lg:hidden">
     <button onClick={() => setOpen(!open)} className="btn btn-secondary"><Menu size={16}/>메뉴</button>
     {open && <div className="absolute left-4 right-4 top-16 z-50 rounded-xl border border-slate-700 bg-slate-950 p-3 shadow-xl">

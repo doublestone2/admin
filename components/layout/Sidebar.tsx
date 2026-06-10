@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, LayoutDashboard, Car, FileText, Users, Settings, Wallet, Building2, Hospital } from "lucide-react";
+import { ChevronDown, LayoutDashboard, Car, FileText, Users, Wallet, Building2, Hospital } from "lucide-react";
 import type { Profile } from "@/types";
 import { cn } from "@/lib/utils/format";
 
@@ -39,7 +39,6 @@ export function Sidebar({ profile }: { profile: Profile }) {
         <Item href="/admin/settlements"><span className="flex items-center gap-2"><Wallet size={16}/>정산관리</span></Item>
         <Item href="/admin/board"><span className="flex items-center gap-2"><FileText size={16}/>자료공유</span></Item>
         {profile.role === "ADMIN" && <Item href="/admin/staff"><span className="flex items-center gap-2"><Users size={16}/>직원관리</span></Item>}
-        {profile.role === "ADMIN" && <Item href="/admin/settings"><span className="flex items-center gap-2"><Settings size={16}/>설정</span></Item>}
         <Item href="/admin/account"><span className="flex items-center gap-2"><Building2 size={16}/>내 계정</span></Item>
       </nav>
     </aside>
