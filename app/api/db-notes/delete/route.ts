@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
     const body = await request.json();
 
-    const id = String(body.id || "");
+    const id = String(body.id || "").trim();
 
     if (!id) {
       return NextResponse.json(

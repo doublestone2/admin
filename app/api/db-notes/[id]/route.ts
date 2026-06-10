@@ -8,8 +8,8 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
     const body = await request.json();
 
-    const targetType = String(body.targetType || "");
-    const targetId = String(body.targetId || "");
+    const targetType = String(body.targetType || "").trim();
+    const targetId = String(body.targetId || "").trim();
     const content = String(body.content || "").trim();
 
     if (!targetType || !targetId) {
@@ -26,16 +26,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const now = new Date().toISOString();
+
     const { data, error } = await supabase
       .from("db_notes")
       .insert({
         target_type: targetType,
         target_id: targetId,
         content,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: now,
+        updated_at: now,
       })
-      .select("*")
+      .select("id,content,created_at,updated_at")
       .single();
 
     if (error) {
@@ -47,7 +49,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      note: data,
+      note: {
+        ...data,
+        created_by_name: "-",
+      },
     });
   } catch (error) {
     return NextResponse.json(

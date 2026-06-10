@@ -2,7 +2,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-const BUCKET = "db-files";
+const DEFAULT_BUCKET = "db-files";
 
 function getFileName(file: any) {
   return (
@@ -28,18 +28,39 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const supabase = createSupabaseAdminClient();
+  const id = String(params.id || "").trim();
+
+  if (!id) {
+    return new Response("파일 ID가 없습니다.", { status: 400 });
+  }
 
   const { data: file, error } = await supabase
     .from("db_files")
-    .select("*")
-    .eq("id", params.id)
+    .select(
+      `
+      id,
+      bucket,
+      storage_path,
+      path,
+      file_path,
+      original_file_name,
+      display_name,
+      original_name,
+      file_name,
+      filename,
+      name,
+      mime_type,
+      content_type
+    `
+    )
+    .eq("id", id)
     .maybeSingle();
 
   if (error || !file) {
     return new Response("파일을 찾을 수 없습니다.", { status: 404 });
   }
 
-  const bucket = file.bucket || BUCKET;
+  const bucket = file.bucket || DEFAULT_BUCKET;
   const storagePath = file.storage_path || file.path || file.file_path;
 
   if (!storagePath) {

@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-const BUCKET = "db-files";
+const DEFAULT_BUCKET = "db-files";
 
 export async function DELETE(
   _request: Request,
@@ -11,11 +11,19 @@ export async function DELETE(
 ) {
   try {
     const supabase = createSupabaseAdminClient();
+    const id = String(params.id || "").trim();
+
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, error: "삭제할 파일 ID가 없습니다." },
+        { status: 400 }
+      );
+    }
 
     const { data: file, error: selectError } = await supabase
       .from("db_files")
-      .select("*")
-      .eq("id", params.id)
+      .select("id,bucket,storage_path,path,file_path")
+      .eq("id", id)
       .maybeSingle();
 
     if (selectError) {
@@ -32,7 +40,7 @@ export async function DELETE(
       );
     }
 
-    const bucket = file.bucket || BUCKET;
+    const bucket = file.bucket || DEFAULT_BUCKET;
     const storagePath = file.storage_path || file.path || file.file_path;
 
     if (storagePath) {
@@ -42,7 +50,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from("db_files")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (deleteError) {
       return NextResponse.json(
