@@ -67,7 +67,10 @@ export async function GET(request: Request) {
     const start = searchParams.get("start") || "";
     const end = searchParams.get("end") || "";
 
-    const { rows } = await getContractRows();
+    const { rows } = await getContractRows({
+      start,
+      end,
+    });
 
     const normalizedRows = (rows || []).map((row: any) => {
       const contract = row.lead_contracts?.[0] || {};

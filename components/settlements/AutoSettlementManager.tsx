@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type SettlementRow = {
   id: string;
@@ -52,7 +52,7 @@ function inRange(date: string, start: string, end: string) {
 }
 
 export function AutoSettlementManager() {
-  const monthRange = getKstMonthRange();
+  const monthRange = useMemo(() => getKstMonthRange(), []);
 
   const [startDate, setStartDate] = useState(monthRange.start);
   const [endDate, setEndDate] = useState(monthRange.end);
@@ -60,30 +60,40 @@ export function AutoSettlementManager() {
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function loadRows() {
+  const loadRows = useCallback(async () => {
     setPending(true);
     setMsg(null);
 
-    const res = await fetch(
-      `/api/settlements/auto?start=${startDate}&end=${endDate}`
-    );
+    try {
+      const params = new URLSearchParams();
 
-    const result = await res.json();
+      if (startDate) params.set("start", startDate);
+      if (endDate) params.set("end", endDate);
 
-    setPending(false);
+      const res = await fetch(`/api/settlements/auto?${params.toString()}`, {
+        cache: "no-store",
+      });
 
-    if (!result.ok) {
-      setMsg(result.error || "정산 조회 중 오류가 발생했습니다.");
-      return;
+      const result = await res.json();
+
+      if (!result.ok) {
+        setMsg(result.error || "정산 조회 중 오류가 발생했습니다.");
+        setRows([]);
+        return;
+      }
+
+      setRows(result.rows || []);
+    } catch {
+      setMsg("정산 조회 중 오류가 발생했습니다.");
+      setRows([]);
+    } finally {
+      setPending(false);
     }
-
-    setRows(result.rows || []);
-  }
+  }, [startDate, endDate]);
 
   useEffect(() => {
     loadRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+  }, [loadRows]);
 
   const summary = useMemo(() => {
     const contractRows = rows.filter((row) =>
@@ -184,7 +194,7 @@ export function AutoSettlementManager() {
             onClick={loadRows}
             disabled={pending}
           >
-            조회
+            {pending ? "조회 중..." : "조회"}
           </button>
 
           <button
@@ -202,11 +212,11 @@ export function AutoSettlementManager() {
         </div>
       </section>
 
-      {msg && (
+      {msg ? (
         <p className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-slate-200">
           {msg}
         </p>
-      )}
+      ) : null}
 
       <section className="grid gap-3 md:grid-cols-4">
         <div className="card p-5">
@@ -259,7 +269,9 @@ export function AutoSettlementManager() {
                   <td className="p-3 font-semibold text-white">
                     {staff.staff_name}
                   </td>
-                  <td className="p-3 text-right">{staff.contract_count}건</td>
+                  <td className="p-3 text-right">
+                    {staff.contract_count}건
+                  </td>
                   <td className="p-3 text-right">{staff.closed_count}건</td>
                   <td className="p-3 text-right">
                     {money(staff.total_settlement)}
@@ -268,13 +280,13 @@ export function AutoSettlementManager() {
                 </tr>
               ))}
 
-              {summary.staff.length === 0 && (
+              {summary.staff.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-4 text-center text-slate-500">
                     조회된 정산 내역이 없습니다.
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>
@@ -320,13 +332,13 @@ export function AutoSettlementManager() {
                 </tr>
               ))}
 
-              {summary.closedRows.length === 0 && (
+              {summary.closedRows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-4 text-center text-slate-500">
                     해당 기간에 종결된 DB가 없습니다.
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>

@@ -88,8 +88,6 @@ export async function createLeadAction(formData: FormData) {
   }
 
   revalidatePath("/admin/leads");
-  revalidatePath("/admin/dashboard");
-  revalidatePath("/admin/contracts");
 
   return { ok: true, id: data.id };
 }
@@ -126,7 +124,6 @@ export async function updateLeadAction(formData: FormData) {
 
   revalidatePath("/admin/leads");
   revalidatePath(`/admin/leads/${id}`);
-  revalidatePath("/admin/contracts");
 
   return { ok: true };
 }
@@ -215,6 +212,9 @@ export async function deleteLeadAction(formData: FormData) {
   await requireAdmin();
 
   const id = cleanText(formData.get("id"));
+
+  if (!id) return { ok: false, error: "ID가 없습니다." };
+
   const admin = createSupabaseAdminClient();
 
   const { error } = await admin
@@ -227,8 +227,6 @@ export async function deleteLeadAction(formData: FormData) {
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/admin/leads");
-  revalidatePath("/admin/dashboard");
-  revalidatePath("/admin/contracts");
 
   return { ok: true };
 }

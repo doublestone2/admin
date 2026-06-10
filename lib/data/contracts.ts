@@ -30,6 +30,8 @@ type GetContractRowsInput = {
   paginated?: boolean;
   query?: string;
   field?: ContractSearchField | string;
+  start?: string;
+  end?: string;
 };
 
 function money(value: unknown) {
@@ -78,13 +80,20 @@ function buildLeadFilter(query: string, field: string) {
   return `name.ilike.%${query}%,phone.ilike.%${query}%,manager_name.ilike.%${query}%`;
 }
 
+function toStartDateTime(value?: string) {
+  if (!value) return "";
+  return `${value.slice(0, 10)}T00:00:00.000+09:00`;
+}
+
+function toEndDateTime(value?: string) {
+  if (!value) return "";
+  return `${value.slice(0, 10)}T23:59:59.999+09:00`;
+}
+
 async function getLeadIdsFromContracts(query: string, field: string) {
   const supabase = createSupabaseServerClient();
 
-  let q = supabase
-    .from("lead_contracts")
-    .select("lead_id")
-    .limit(1000);
+  let q = supabase.from("lead_contracts").select("lead_id").limit(1000);
 
   if (field === "memo") {
     q = q.ilike("memo", `%${query}%`);
@@ -103,11 +112,42 @@ async function getLeadIdsFromContracts(query: string, field: string) {
   if (error) throw new Error(error.message);
 
   return Array.from(
-    new Set(
-      ((data || []) as any[])
-        .map((row) => row.lead_id)
-        .filter(Boolean)
-    )
+    new Set(((data || []) as any[]).map((row) => row.lead_id).filter(Boolean))
+  );
+}
+
+async function getLeadIdsFromContractsByDate(start?: string, end?: string) {
+  if (!start && !end) return [];
+
+  const supabase = createSupabaseServerClient();
+
+  let q = supabase.from("lead_contracts").select("lead_id").limit(1000);
+
+  const startDateTime = toStartDateTime(start);
+  const endDateTime = toEndDateTime(end);
+
+  if (startDateTime && endDateTime) {
+    q = q.or(
+      `contract_date.gte.${startDateTime},settlement_date.gte.${startDateTime},closed_at.gte.${startDateTime},completed_at.gte.${startDateTime},updated_at.gte.${startDateTime}`
+    );
+  } else if (startDateTime) {
+    q = q.or(
+      `contract_date.gte.${startDateTime},settlement_date.gte.${startDateTime},closed_at.gte.${startDateTime},completed_at.gte.${startDateTime},updated_at.gte.${startDateTime}`
+    );
+  } else if (endDateTime) {
+    q = q.or(
+      `contract_date.lte.${endDateTime},settlement_date.lte.${endDateTime},closed_at.lte.${endDateTime},completed_at.lte.${endDateTime},updated_at.lte.${endDateTime}`
+    );
+  }
+
+  const { data, error } = await q;
+
+  if (error) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(((data || []) as any[]).map((row) => row.lead_id).filter(Boolean))
   );
 }
 
@@ -147,12 +187,15 @@ export async function getContractRows(input: GetContractRowsInput = {}) {
   const page = Math.max(1, Number(input.page || 1));
   const queryText = String(input.query || "").trim();
   const field = String(input.field || "all");
+  const start = String(input.start || "").trim();
+  const end = String(input.end || "").trim();
 
   const { from, to } = getPageRange(page);
 
   const supabase = createSupabaseServerClient();
 
   let contractLeadIds: string[] = [];
+  let dateLeadIds: string[] = [];
 
   if (
     queryText &&
@@ -161,7 +204,22 @@ export async function getContractRows(input: GetContractRowsInput = {}) {
     contractLeadIds = await getLeadIdsFromContracts(queryText, field);
   }
 
+  if (start || end) {
+    dateLeadIds = await getLeadIdsFromContractsByDate(start, end);
+  }
+
   if (queryText && field === "memo" && contractLeadIds.length === 0) {
+    return {
+      rows: [],
+      stats: calcContractStats([]),
+      count: 0,
+      page,
+      pageSize: CONTRACT_PAGE_SIZE,
+      totalPages: 1,
+    };
+  }
+
+  if ((start || end) && dateLeadIds.length === 0) {
     return {
       rows: [],
       stats: calcContractStats([]),
@@ -192,6 +250,10 @@ export async function getContractRows(input: GetContractRowsInput = {}) {
     .in("status", ["CONTRACTED", "CLOSED"])
     .order("created_at", { ascending: false });
 
+  if (start || end) {
+    query = query.in("id", dateLeadIds);
+  }
+
   if (queryText) {
     if (field === "memo") {
       query = query.in("id", contractLeadIds);
@@ -210,6 +272,8 @@ export async function getContractRows(input: GetContractRowsInput = {}) {
 
   if (input.paginated) {
     query = query.range(from, to);
+  } else {
+    query = query.limit(1000);
   }
 
   const { data, error, count } = await query;
