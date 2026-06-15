@@ -113,9 +113,7 @@ export async function GET(request: Request) {
       const settlementDate = toDateOnly(
         contract.settlement_date ||
           contract.closed_at ||
-          contract.completed_at ||
-          contract.updated_at ||
-          row.created_at
+          contract.completed_at
       );
 
       const status = contract.status || row.status || "";
@@ -143,10 +141,10 @@ export async function GET(request: Request) {
         ),
         detail_href: `/admin/leads/${row.id}`,
         is_closed:
-          isClosedStatus(status) ||
+          isClosedStatus(status) &&
           Boolean(
-            contract.closed_at ||
-              contract.settlement_date ||
+            contract.settlement_date ||
+              contract.closed_at ||
               contract.completed_at
           ),
       };
