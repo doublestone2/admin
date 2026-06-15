@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { LeadCategory } from "@/types";
 
 type SettlementRow = {
   id: string;
+  category?: LeadCategory | string | null;
   case_type: string;
   client_name: string;
   phone: string;
@@ -17,6 +19,28 @@ type SettlementRow = {
   detail_href: string;
   is_closed: boolean;
 };
+
+const CATEGORY_LABEL: Record<LeadCategory, string> = {
+  traffic: "교통사고",
+  recovery: "개인회생",
+  civil: "민사",
+  criminal: "형사",
+  etc: "기타",
+};
+
+function getCategoryLabel(category?: string | null, fallback?: string) {
+  if (
+    category === "traffic" ||
+    category === "recovery" ||
+    category === "civil" ||
+    category === "criminal" ||
+    category === "etc"
+  ) {
+    return CATEGORY_LABEL[category];
+  }
+
+  return fallback || "교통사고";
+}
 
 function getKstMonthRange() {
   const now = new Date();
@@ -166,7 +190,7 @@ export function AutoSettlementManager() {
       <div>
         <h1 className="text-2xl font-black text-white">정산관리</h1>
         <p className="mt-1 text-sm text-slate-400">
-          DB관리에서 계약·종결 처리된 데이터를 자동으로 집계합니다.
+          계약현황에 등록된 데이터를 기준으로 자동 집계합니다.
         </p>
       </div>
 
@@ -220,21 +244,21 @@ export function AutoSettlementManager() {
 
       <section className="grid gap-3 md:grid-cols-4">
         <div className="card p-5">
-          <p className="text-sm text-slate-400">계약수</p>
+          <p className="text-sm text-slate-400">계약건</p>
           <p className="mt-2 text-2xl font-black text-white">
             {summary.contract_count.toLocaleString("ko-KR")}건
           </p>
         </div>
 
         <div className="card p-5">
-          <p className="text-sm text-slate-400">종결수</p>
+          <p className="text-sm text-slate-400">종결건</p>
           <p className="mt-2 text-2xl font-black text-white">
             {summary.closed_count.toLocaleString("ko-KR")}건
           </p>
         </div>
 
         <div className="card p-5">
-          <p className="text-sm text-slate-400">총 합의금</p>
+          <p className="text-sm text-slate-400">총 합의금/수임료</p>
           <p className="mt-2 text-2xl font-black text-white">
             {money(summary.total_settlement)}
           </p>
@@ -258,7 +282,7 @@ export function AutoSettlementManager() {
                 <th className="p-3 text-left">직원명</th>
                 <th className="p-3 text-right">계약 건수</th>
                 <th className="p-3 text-right">종결 건수</th>
-                <th className="p-3 text-right">총 합의금</th>
+                <th className="p-3 text-right">총 합의금/수임료</th>
                 <th className="p-3 text-right">총 수수료</th>
               </tr>
             </thead>
@@ -293,18 +317,18 @@ export function AutoSettlementManager() {
       </section>
 
       <section className="card p-5">
-        <h2 className="text-lg font-black text-white">종결된 DB</h2>
+        <h2 className="text-lg font-black text-white">종결 DB</h2>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-slate-800">
           <table className="w-full text-sm">
             <thead className="bg-slate-900 text-slate-400">
               <tr>
                 <th className="p-3 text-left">종결일</th>
-                <th className="p-3 text-left">구분</th>
+                <th className="p-3 text-left">카테고리</th>
                 <th className="p-3 text-left">고객명</th>
                 <th className="p-3 text-left">연락처</th>
                 <th className="p-3 text-left">담당자</th>
-                <th className="p-3 text-right">합의금</th>
+                <th className="p-3 text-right">합의금/수임료</th>
                 <th className="p-3 text-right">수수료</th>
                 <th className="p-3 text-right">상세</th>
               </tr>
@@ -314,7 +338,11 @@ export function AutoSettlementManager() {
               {summary.closedRows.map((row) => (
                 <tr key={row.id}>
                   <td className="p-3">{row.settlement_date || "-"}</td>
-                  <td className="p-3">{row.case_type}</td>
+                  <td className="p-3">
+                    <span className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                      {getCategoryLabel(row.category, row.case_type)}
+                    </span>
+                  </td>
                   <td className="p-3 font-semibold text-white">
                     {row.client_name}
                   </td>

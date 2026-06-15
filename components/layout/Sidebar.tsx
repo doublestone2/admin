@@ -34,12 +34,13 @@ function Item({ href, children }: { href: string; children: React.ReactNode }) {
 }
 
 export function Sidebar({ profile }: { profile: Profile }) {
-  const [open, setOpen] = useState(true);
+  const [trafficOpen, setTrafficOpen] = useState(true);
+  const [caseOpen, setCaseOpen] = useState(true);
 
   return (
     <aside className="hidden h-screen w-72 shrink-0 border-r border-slate-800 bg-slate-950/95 p-4 lg:block">
       <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <p className="text-xs font-bold text-blue-400">TRAFFIC CRM</p>
+        <p className="text-xs font-bold text-blue-400">LAWGUARD CRM</p>
         <h1 className="mt-1 text-lg font-black text-white">교통사고 어드민</h1>
         <p className="mt-2 text-xs text-slate-400">
           {profile.name} · {profile.role}
@@ -57,7 +58,7 @@ export function Sidebar({ profile }: { profile: Profile }) {
         <div>
           <button
             type="button"
-            onClick={() => setOpen(!open)}
+            onClick={() => setTrafficOpen(!trafficOpen)}
             className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-200 hover:bg-slate-800"
           >
             <span className="flex items-center gap-2">
@@ -67,11 +68,11 @@ export function Sidebar({ profile }: { profile: Profile }) {
 
             <ChevronDown
               size={16}
-              className={open ? "rotate-180 transition" : "transition"}
+              className={trafficOpen ? "rotate-180 transition" : "transition"}
             />
           </button>
 
-          {open ? (
+          {trafficOpen ? (
             <div className="mt-1 space-y-1 pl-4">
               <Item href="/admin/leads">DB관리</Item>
               <Item href="/admin/insurance">보험사 DB</Item>
@@ -82,10 +83,43 @@ export function Sidebar({ profile }: { profile: Profile }) {
                   병원 DB
                 </span>
               </Item>
-              <Item href="/admin/contracts">계약현황</Item>
             </div>
           ) : null}
         </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setCaseOpen(!caseOpen)}
+            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-200 hover:bg-slate-800"
+          >
+            <span className="flex items-center gap-2">
+              <FileText size={16} />
+              기타 수임관리
+            </span>
+
+            <ChevronDown
+              size={16}
+              className={caseOpen ? "rotate-180 transition" : "transition"}
+            />
+          </button>
+
+          {caseOpen ? (
+            <div className="mt-1 space-y-1 pl-4">
+              <Item href="/admin/recovery">개인회생</Item>
+              <Item href="/admin/civil">민사</Item>
+              <Item href="/admin/criminal">형사</Item>
+              <Item href="/admin/etc">기타</Item>
+            </div>
+          ) : null}
+        </div>
+
+        <Item href="/admin/contracts">
+          <span className="flex items-center gap-2">
+            <FileText size={16} />
+            계약현황
+          </span>
+        </Item>
 
         <Item href="/admin/settlements">
           <span className="flex items-center gap-2">

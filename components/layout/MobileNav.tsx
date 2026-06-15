@@ -14,6 +14,10 @@ export function MobileNav({ profile }: { profile: Profile }) {
     ["/admin/insurance", "보험사 DB"],
     ["/admin/partners", "제휴업체 DB"],
     ["/admin/hospitals", "병원 DB"],
+    ["/admin/recovery", "개인회생"],
+    ["/admin/civil", "민사"],
+    ["/admin/criminal", "형사"],
+    ["/admin/etc", "기타"],
     ["/admin/contracts", "계약현황"],
     ["/admin/settlements", "정산관리"],
     ["/admin/board", "자료공유"],
@@ -21,7 +25,7 @@ export function MobileNav({ profile }: { profile: Profile }) {
   ];
 
   if (profile.role === "ADMIN") {
-    links.splice(8, 0, ["/admin/staff", "직원관리"]);
+    links.splice(12, 0, ["/admin/staff", "직원관리"]);
   }
 
   return (

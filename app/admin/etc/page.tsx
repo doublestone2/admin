@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/common/PageHeader";
+﻿import { PageHeader } from "@/components/common/PageHeader";
 import { LeadTable } from "@/components/leads/LeadTable";
 import { getLeads, LEAD_PAGE_SIZE } from "@/lib/data/leads";
 import { getStaffNameOptions } from "@/lib/data/settings";
@@ -12,12 +12,13 @@ const SEARCH_OPTIONS = [
   { label: "전체", value: "all" },
   { label: "이름", value: "name" },
   { label: "전화번호", value: "phone" },
-  { label: "상대 보험사", value: "insurance_company" },
+  { label: "사건유형", value: "case_type" },
+  { label: "상담내용", value: "case_summary" },
   { label: "담당자", value: "manager_name" },
   { label: "메모", value: "memo" },
 ];
 
-export default async function LeadsPage({
+export default async function EtcPage({
   searchParams,
 }: {
   searchParams: {
@@ -39,7 +40,7 @@ export default async function LeadsPage({
       field,
       status,
       page: currentPage,
-      category: "traffic",
+      category: "etc",
     }),
     getStaffNameOptions(),
   ]);
@@ -51,12 +52,12 @@ export default async function LeadsPage({
   return (
     <>
       <PageHeader
-        title="교통사고 DB관리"
-        description="교통사고 상담 DB를 추가하고, 메모와 진행상태를 관리합니다."
+        title="기타 DB관리"
+        description="기타 수임 상담 DB를 추가하고, 메모와 진행상태를 관리합니다."
       />
 
       <ListSearchBar
-        basePath="/admin/leads"
+        basePath="/admin/etc"
         query={q}
         field={field}
         options={SEARCH_OPTIONS}
@@ -69,6 +70,7 @@ export default async function LeadsPage({
         totalCount={totalCount}
         currentPage={currentPage}
         pageSize={pageSize}
+        category="etc"
       />
 
       <div className="mt-4 text-sm text-slate-400">
@@ -78,7 +80,7 @@ export default async function LeadsPage({
       </div>
 
       <Pagination
-        basePath="/admin/leads"
+        basePath="/admin/etc"
         currentPage={currentPage}
         totalPages={totalPages}
         query={q}

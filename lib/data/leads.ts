@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Lead, LeadNoteWithAuthor, Profile } from "@/types";
+import type { Lead, LeadCategory, LeadNoteWithAuthor, Profile } from "@/types";
 
 export const LEAD_PAGE_SIZE = 15;
 
@@ -15,7 +15,21 @@ type LeadSearchField =
   | "phone"
   | "insurance_company"
   | "manager_name"
-  | "memo";
+  | "memo"
+  | "region"
+  | "case_type"
+  | "case_summary"
+  | "opposing_party"
+  | "criminal_position"
+  | "case_stage";
+
+const LEAD_CATEGORIES = new Set([
+  "traffic",
+  "recovery",
+  "civil",
+  "criminal",
+  "etc",
+]);
 
 function normalizeProfile(row: any) {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
@@ -24,6 +38,15 @@ function normalizeProfile(row: any) {
 
 function normalizeSearchText(value: string) {
   return String(value || "").trim();
+}
+
+function normalizeCategory(value?: string) {
+  const category = String(value || "traffic").trim();
+
+  if (category === "all") return "all";
+  if (LEAD_CATEGORIES.has(category)) return category as LeadCategory;
+
+  return "traffic";
 }
 
 async function getLeadIdsByMemo(query: string) {
@@ -66,7 +89,42 @@ function buildLeadTextFilter(query: string, field: LeadSearchField) {
     return `manager_name.ilike.%${query}%`;
   }
 
-  return `name.ilike.%${query}%,phone.ilike.%${query}%,insurance_company.ilike.%${query}%,manager_name.ilike.%${query}%`;
+  if (field === "region") {
+    return `region.ilike.%${query}%`;
+  }
+
+  if (field === "case_type") {
+    return `case_type.ilike.%${query}%`;
+  }
+
+  if (field === "case_summary") {
+    return `case_summary.ilike.%${query}%`;
+  }
+
+  if (field === "opposing_party") {
+    return `opposing_party.ilike.%${query}%`;
+  }
+
+  if (field === "criminal_position") {
+    return `criminal_position.ilike.%${query}%`;
+  }
+
+  if (field === "case_stage") {
+    return `case_stage.ilike.%${query}%`;
+  }
+
+  return [
+    `name.ilike.%${query}%`,
+    `phone.ilike.%${query}%`,
+    `insurance_company.ilike.%${query}%`,
+    `manager_name.ilike.%${query}%`,
+    `region.ilike.%${query}%`,
+    `case_type.ilike.%${query}%`,
+    `case_summary.ilike.%${query}%`,
+    `opposing_party.ilike.%${query}%`,
+    `criminal_position.ilike.%${query}%`,
+    `case_stage.ilike.%${query}%`,
+  ].join(",");
 }
 
 export async function getLeads({
@@ -74,17 +132,20 @@ export async function getLeads({
   query = "",
   status = "",
   field = "all",
+  category = "traffic",
 }: {
   page?: number;
   query?: string;
   status?: string;
   field?: LeadSearchField | string;
+  category?: LeadCategory | "all" | string;
 }) {
   const supabase = createSupabaseServerClient();
 
   const safePage = Math.max(1, Number(page || 1));
   const searchText = normalizeSearchText(query);
   const searchField = (field || "all") as LeadSearchField;
+  const safeCategory = normalizeCategory(category);
 
   const from = (safePage - 1) * LEAD_PAGE_SIZE;
   const to = from + LEAD_PAGE_SIZE - 1;
@@ -110,6 +171,7 @@ export async function getLeads({
     .select(
       `
       id,
+      category,
       created_at,
       updated_at,
       name,
@@ -119,6 +181,15 @@ export async function getLeads({
       status,
       assigned_to,
       manager_name,
+      debt_amount,
+      job_income,
+      region,
+      case_type,
+      claim_amount,
+      opposing_party,
+      criminal_position,
+      case_stage,
+      case_summary,
       latest_note,
       latest_note_at,
       profiles:assigned_to(name,email)
@@ -126,6 +197,10 @@ export async function getLeads({
       { count: "exact" }
     )
     .is("deleted_at", null);
+
+  if (safeCategory !== "all") {
+    q = q.eq("category", safeCategory);
+  }
 
   if (searchText) {
     if (searchField === "memo") {
@@ -153,6 +228,7 @@ export async function getLeads({
 
   const rows = ((data || []) as any[]).map((row) => ({
     ...row,
+    category: row.category || "traffic",
     profiles: normalizeProfile(row),
     latest_note: row.latest_note || null,
     latest_note_at: row.latest_note_at || null,
@@ -185,6 +261,7 @@ export async function getLead(id: string): Promise<LeadRow | null> {
 
   return {
     ...(data as any),
+    category: (data as any).category || "traffic",
     profiles: normalizeProfile(data),
   } as LeadRow;
 }

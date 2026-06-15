@@ -4,20 +4,30 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatKSTDateTime } from "@/lib/utils/date";
 import { formatMoney } from "@/lib/utils/format";
 import type { ContractRow } from "@/lib/data/contracts";
-import type { Profile } from "@/types";
+import type { LeadCategory } from "@/types";
 
 type ContractTableProps = {
   rows: ContractRow[];
-  profiles: Profile[];
   staffNames: string[];
   totalCount?: number;
   currentPage?: number;
   pageSize?: number;
 };
 
+const CATEGORY_LABEL: Record<LeadCategory, string> = {
+  traffic: "교통사고",
+  recovery: "개인회생",
+  civil: "민사",
+  criminal: "형사",
+  etc: "기타",
+};
+
+function getCategoryLabel(category?: LeadCategory | null) {
+  return CATEGORY_LABEL[category || "traffic"] || "교통사고";
+}
+
 export function ContractTable({
   rows,
-  profiles,
   staffNames,
   totalCount = rows.length,
   currentPage = 1,
@@ -34,13 +44,14 @@ export function ContractTable({
           <tr>
             <th className="w-16 p-3 text-left">No</th>
             <th className="p-3 text-left">등록일</th>
+            <th className="p-3 text-left">카테고리</th>
             <th className="p-3 text-left">이름</th>
             <th className="p-3 text-left">전화번호</th>
             <th className="p-3 text-left">현황</th>
             <th className="p-3 text-left">1차 담당자</th>
             <th className="p-3 text-left">2차 담당자</th>
             <th className="p-3 text-left">지정 수수료</th>
-            <th className="p-3 text-left">합의금</th>
+            <th className="p-3 text-left">합의금/수임료</th>
             <th className="p-3 text-left">수수료</th>
             <th className="p-3 text-right">액션</th>
           </tr>
@@ -49,7 +60,7 @@ export function ContractTable({
         <tbody className="divide-y divide-slate-800">
           {rows.length === 0 ? (
             <tr>
-              <td className="p-6 text-center text-sm text-slate-500" colSpan={11}>
+              <td className="p-6 text-center text-sm text-slate-500" colSpan={12}>
                 등록된 계약 데이터가 없습니다.
               </td>
             </tr>
@@ -66,6 +77,12 @@ export function ContractTable({
 
                 <td className="p-3 text-slate-400">
                   {formatKSTDateTime(row.created_at)}
+                </td>
+
+                <td className="p-3">
+                  <span className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-300">
+                    {getCategoryLabel(row.category)}
+                  </span>
                 </td>
 
                 <td className="p-3 font-bold text-white">
@@ -102,7 +119,6 @@ export function ContractTable({
                 <td className="p-3 text-right">
                   <ContractManageButton
                     row={row}
-                    profiles={profiles}
                     staffNames={staffNames}
                   />
                 </td>

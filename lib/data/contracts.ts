@@ -1,10 +1,11 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { LeadContract, LeadStatus } from "@/types";
+import type { LeadCategory, LeadContract, LeadStatus } from "@/types";
 
 export const CONTRACT_PAGE_SIZE = 20;
 
 export type ContractRow = {
   id: string;
+  category: LeadCategory | null;
   name: string;
   phone: string;
   status: LeadStatus;
@@ -235,6 +236,7 @@ export async function getContractRows(input: GetContractRowsInput = {}) {
     .select(
       `
       id,
+      category,
       name,
       phone,
       status,
@@ -282,6 +284,7 @@ export async function getContractRows(input: GetContractRowsInput = {}) {
 
   const rows = ((data || []) as any[]).map((row) => ({
     ...row,
+    category: row.category || "traffic",
     profiles: Array.isArray(row.profiles)
       ? row.profiles[0] || null
       : row.profiles,

@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { getContractRows } from "@/lib/data/contracts";
+import type { LeadCategory } from "@/types";
 
 export const dynamic = "force-dynamic";
+
+const CATEGORY_LABEL: Record<LeadCategory, string> = {
+  traffic: "교통사고",
+  recovery: "개인회생",
+  civil: "민사",
+  criminal: "형사",
+  etc: "기타",
+};
 
 function toNumber(value: unknown) {
   const raw = String(value || "0").replaceAll(",", "");
@@ -50,9 +59,30 @@ function isClosedStatus(value: unknown) {
   );
 }
 
+function getCategory(value: unknown): LeadCategory {
+  const category = String(value || "traffic").trim();
+
+  if (
+    category === "traffic" ||
+    category === "recovery" ||
+    category === "civil" ||
+    category === "criminal" ||
+    category === "etc"
+  ) {
+    return category;
+  }
+
+  return "traffic";
+}
+
+function getCategoryLabel(category: LeadCategory) {
+  return CATEGORY_LABEL[category] || "교통사고";
+}
+
 function getStaffName(row: any, contract: any) {
   return (
     contract.primary_manager_name ||
+    contract.secondary_manager_name ||
     contract.manager_name ||
     row.manager_name ||
     row.profiles?.name ||
@@ -74,6 +104,7 @@ export async function GET(request: Request) {
 
     const normalizedRows = (rows || []).map((row: any) => {
       const contract = row.lead_contracts?.[0] || {};
+      const category = getCategory(contract.category || row.category);
 
       const contractDate = toDateOnly(
         contract.contract_date || contract.created_at || row.created_at
@@ -91,7 +122,8 @@ export async function GET(request: Request) {
 
       return {
         id: row.id,
-        case_type: "교통사고",
+        category,
+        case_type: getCategoryLabel(category),
         client_name: row.name || row.client_name || "-",
         phone: row.phone || "-",
         staff_name: getStaffName(row, contract),

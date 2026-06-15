@@ -2,11 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DbFileSection } from "@/components/common/DbFileSection";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import {
-  getLead,
-  getLeadNotes,
-  getProfilesForSelect,
-} from "@/lib/data/leads";
+import { getLead, getLeadNotes } from "@/lib/data/leads";
 import { getDbFiles } from "@/lib/data/files";
 import { formatKSTDateTime } from "@/lib/utils/date";
 import {
@@ -22,24 +18,58 @@ import {
   LEAD_STATUS_LABEL,
 } from "@/lib/utils/constants";
 import { requireAuth } from "@/lib/auth/get-profile";
+import type { LeadCategory } from "@/types";
 
 export const dynamic = "force-dynamic";
+
+const CATEGORY_LABEL: Record<LeadCategory, string> = {
+  traffic: "교통사고",
+  recovery: "개인회생",
+  civil: "민사",
+  criminal: "형사",
+  etc: "기타",
+};
+
+const CATEGORY_BACK_HREF: Record<LeadCategory, string> = {
+  traffic: "/admin/leads",
+  recovery: "/admin/recovery",
+  civil: "/admin/civil",
+  criminal: "/admin/criminal",
+  etc: "/admin/etc",
+};
+
+function getCategory(value?: string | null): LeadCategory {
+  if (
+    value === "traffic" ||
+    value === "recovery" ||
+    value === "civil" ||
+    value === "criminal" ||
+    value === "etc"
+  ) {
+    return value;
+  }
+
+  return "traffic";
+}
 
 export default async function LeadDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const [profile, lead, notes, files, profiles, staffNames] = await Promise.all([
+  const [profile, lead, notes, files, staffNames] = await Promise.all([
     requireAuth(),
     getLead(params.id),
     getLeadNotes(params.id),
     getDbFiles("LEAD", params.id),
-    getProfilesForSelect(),
     getStaffNameOptions(),
   ]);
 
   if (!lead) notFound();
+
+  const category = getCategory(lead.category);
+  const categoryLabel = CATEGORY_LABEL[category];
+  const backHref = CATEGORY_BACK_HREF[category];
 
   async function handleUpdateLead(formData: FormData): Promise<void> {
     "use server";
@@ -65,11 +95,16 @@ export default async function LeadDetailPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/admin/leads" className="text-sm text-blue-400">
+          <Link href={backHref} className="text-sm text-blue-400">
             ← 목록으로
           </Link>
 
-          <h1 className="mt-2 text-2xl font-black text-white">{lead.name}</h1>
+          <div className="mt-2 flex items-center gap-2">
+            <h1 className="text-2xl font-black text-white">{lead.name}</h1>
+            <span className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-300">
+              {categoryLabel}
+            </span>
+          </div>
         </div>
 
         <StatusBadge status={lead.status} />
@@ -94,6 +129,7 @@ export default async function LeadDetailPage({
           className="mt-4 grid gap-3 md:grid-cols-2"
         >
           <input type="hidden" name="id" value={lead.id} />
+          <input type="hidden" name="category" value={category} />
 
           <input
             className="input"
@@ -109,43 +145,173 @@ export default async function LeadDetailPage({
             placeholder="전화번호"
           />
 
-          <select
-            className="input"
-            name="contact_method"
-            defaultValue={lead.contact_method || ""}
-          >
-            <option value="">연락방법 선택</option>
-            {CONTACT_METHODS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+          {category === "traffic" ? (
+            <>
+              <select
+                className="input"
+                name="contact_method"
+                defaultValue={lead.contact_method || ""}
+              >
+                <option value="">연락방법 선택</option>
+                {CONTACT_METHODS.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
 
-          <input
-            className="input"
-            name="insurance_company"
-            defaultValue={lead.insurance_company || ""}
-            placeholder="상대 보험사"
-          />
+              <input
+                className="input"
+                name="insurance_company"
+                defaultValue={lead.insurance_company || ""}
+                placeholder="상대 보험사"
+              />
+            </>
+          ) : null}
+
+          {category === "recovery" ? (
+            <>
+              <input
+                className="input"
+                name="debt_amount"
+                defaultValue={lead.debt_amount || ""}
+                placeholder="채무금액"
+              />
+
+              <input
+                className="input"
+                name="job_income"
+                defaultValue={lead.job_income || ""}
+                placeholder="직업 / 소득"
+              />
+
+              <input
+                className="input"
+                name="region"
+                defaultValue={lead.region || ""}
+                placeholder="거주지역"
+              />
+
+              <textarea
+                className="input min-h-24 md:col-span-2"
+                name="case_summary"
+                defaultValue={lead.case_summary || ""}
+                placeholder="상담 내용"
+              />
+            </>
+          ) : null}
+
+          {category === "civil" ? (
+            <>
+              <input
+                className="input"
+                name="case_type"
+                defaultValue={lead.case_type || ""}
+                placeholder="사건유형"
+              />
+
+              <input
+                className="input"
+                name="claim_amount"
+                defaultValue={lead.claim_amount || ""}
+                placeholder="청구금액"
+              />
+
+              <input
+                className="input"
+                name="opposing_party"
+                defaultValue={lead.opposing_party || ""}
+                placeholder="상대방"
+              />
+
+              <textarea
+                className="input min-h-24 md:col-span-2"
+                name="case_summary"
+                defaultValue={lead.case_summary || ""}
+                placeholder="사건 내용"
+              />
+            </>
+          ) : null}
+
+          {category === "criminal" ? (
+            <>
+              <input
+                className="input"
+                name="case_type"
+                defaultValue={lead.case_type || ""}
+                placeholder="사건유형"
+              />
+
+              <select
+                className="input"
+                name="criminal_position"
+                defaultValue={lead.criminal_position || ""}
+              >
+                <option value="">피의자 / 피해자 선택</option>
+                <option value="피의자">피의자</option>
+                <option value="피해자">피해자</option>
+                <option value="참고인">참고인</option>
+                <option value="기타">기타</option>
+              </select>
+
+              <select
+                className="input"
+                name="case_stage"
+                defaultValue={lead.case_stage || ""}
+              >
+                <option value="">진행단계 선택</option>
+                <option value="경찰">경찰</option>
+                <option value="검찰">검찰</option>
+                <option value="법원">법원</option>
+                <option value="수사 전">수사 전</option>
+                <option value="기타">기타</option>
+              </select>
+
+              <input
+                className="input"
+                name="opposing_party"
+                defaultValue={lead.opposing_party || ""}
+                placeholder="상대방 / 고소인 / 피고소인"
+              />
+
+              <textarea
+                className="input min-h-24 md:col-span-2"
+                name="case_summary"
+                defaultValue={lead.case_summary || ""}
+                placeholder="사건 내용"
+              />
+            </>
+          ) : null}
+
+          {category === "etc" ? (
+            <>
+              <input
+                className="input"
+                name="case_type"
+                defaultValue={lead.case_type || ""}
+                placeholder="사건유형"
+              />
+
+              <input
+                className="input"
+                name="region"
+                defaultValue={lead.region || ""}
+                placeholder="지역"
+              />
+
+              <textarea
+                className="input min-h-24 md:col-span-2"
+                name="case_summary"
+                defaultValue={lead.case_summary || ""}
+                placeholder="상담 내용"
+              />
+            </>
+          ) : null}
 
           <select className="input" name="status" defaultValue={lead.status}>
             {LEAD_STATUSES.map((value) => (
               <option key={value} value={value}>
                 {LEAD_STATUS_LABEL[value]}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="input"
-            name="assigned_to"
-            defaultValue={lead.assigned_to || ""}
-          >
-            <option value="">담당자 계정 선택</option>
-            {profiles.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.name || person.email || person.id}
               </option>
             ))}
           </select>

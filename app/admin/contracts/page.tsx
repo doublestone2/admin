@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { ContractTable } from "@/components/contracts/ContractTable";
 import { getContractRows } from "@/lib/data/contracts";
-import { getProfilesForSelect } from "@/lib/data/leads";
 import { getStaffNameOptions } from "@/lib/data/settings";
 import { formatMoney } from "@/lib/utils/format";
 import { ListSearchBar } from "@/components/common/ListSearchBar";
@@ -27,10 +26,10 @@ export default async function ContractsPage({
   };
 }) {
   const currentPage = Math.max(1, Number(searchParams.page || 1) || 1);
-  const q = searchParams.q || "";
+  const q = String(searchParams.q || "").trim();
   const field = searchParams.field || "all";
 
-  const [{ rows, stats, count, totalPages, pageSize }, profiles, staffNames] =
+  const [{ rows, stats, count, totalPages, pageSize }, staffNames] =
     await Promise.all([
       getContractRows({
         page: currentPage,
@@ -38,7 +37,6 @@ export default async function ContractsPage({
         query: q,
         field,
       }),
-      getProfilesForSelect(),
       getStaffNameOptions(),
     ]);
 
@@ -46,14 +44,14 @@ export default async function ContractsPage({
     <>
       <PageHeader
         title="계약현황"
-        description="교통사고 계약과 수수료를 관리합니다."
+        description="교통사고, 개인회생, 민사, 형사, 기타 수임 DB의 계약과 수수료를 관리합니다."
       />
 
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         {[
           ["계약", stats.contractCount],
           ["종결", stats.closedCount],
-          ["총 합의금", formatMoney(stats.totalSettlement)],
+          ["총 합의금/수임료", formatMoney(stats.totalSettlement)],
           ["총 수수료", formatMoney(stats.totalFee)],
         ].map(([key, value]) => (
           <div className="card p-4" key={key}>
@@ -72,7 +70,6 @@ export default async function ContractsPage({
 
       <ContractTable
         rows={rows}
-        profiles={profiles}
         staffNames={staffNames}
         totalCount={count}
         currentPage={currentPage}

@@ -5,9 +5,54 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, requireAdmin } from "@/lib/auth/get-profile";
 import { cleanText } from "@/lib/utils/format";
+import type { LeadCategory } from "@/types";
+
+const CATEGORY_PATHS: Record<LeadCategory, string> = {
+  traffic: "/admin/leads",
+  recovery: "/admin/recovery",
+  civil: "/admin/civil",
+  criminal: "/admin/criminal",
+  etc: "/admin/etc",
+};
+
+const CATEGORY_VALUES = new Set([
+  "traffic",
+  "recovery",
+  "civil",
+  "criminal",
+  "etc",
+]);
 
 function getRawText(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
+}
+
+function getCategory(formData: FormData): LeadCategory {
+  const value = cleanText(formData.get("category"));
+
+  if (CATEGORY_VALUES.has(value)) {
+    return value as LeadCategory;
+  }
+
+  return "traffic";
+}
+
+function revalidateLeadPages(category?: LeadCategory, id?: string) {
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/recovery");
+  revalidatePath("/admin/civil");
+  revalidatePath("/admin/criminal");
+  revalidatePath("/admin/etc");
+  revalidatePath("/admin/contracts");
+  revalidatePath("/admin/settlements");
+
+  if (category) {
+    revalidatePath(CATEGORY_PATHS[category]);
+  }
+
+  if (id) {
+    revalidatePath(`/admin/leads/${id}`);
+  }
 }
 
 async function syncLeadLatestNote(supabase: any, leadId: string) {
@@ -45,12 +90,12 @@ export async function createLeadAction(formData: FormData) {
 
   const name = cleanText(formData.get("name"));
   const phone = getRawText(formData, "phone");
+  const category = getCategory(formData);
 
   if (!name || !phone) {
-    return { ok: false, error: "이름과 전화번호를 입력해 주세요." };
+    return { ok: false, error: "이름과 전화번호를 입력해주세요." };
   }
 
-  const assigned = cleanText(formData.get("assigned_to"));
   const managerName = cleanText(formData.get("manager_name"));
   const memo = cleanText(formData.get("memo"));
   const now = new Date().toISOString();
@@ -60,14 +105,26 @@ export async function createLeadAction(formData: FormData) {
   const { data, error } = await supabase
     .from("leads")
     .insert({
-      category: cleanText(formData.get("category")) || "traffic",
+      category,
       name,
       phone,
       contact_method: cleanText(formData.get("contact_method")) || null,
       insurance_company: cleanText(formData.get("insurance_company")) || null,
       status: cleanText(formData.get("status")) || "NEW",
-      assigned_to: assigned || null,
+      assigned_to: null,
       manager_name: managerName || null,
+
+      debt_amount: cleanText(formData.get("debt_amount")) || null,
+      job_income: cleanText(formData.get("job_income")) || null,
+      region: cleanText(formData.get("region")) || null,
+      case_type: cleanText(formData.get("case_type")) || null,
+      claim_amount: cleanText(formData.get("claim_amount")) || null,
+      opposing_party: cleanText(formData.get("opposing_party")) || null,
+      criminal_position:
+        cleanText(formData.get("criminal_position")) || null,
+      case_stage: cleanText(formData.get("case_stage")) || null,
+      case_summary: cleanText(formData.get("case_summary")) || null,
+
       latest_note: memo || null,
       latest_note_at: memo ? now : null,
     })
@@ -87,30 +144,40 @@ export async function createLeadAction(formData: FormData) {
     if (noteError) return { ok: false, error: noteError.message };
   }
 
-  revalidatePath("/admin/leads");
+  revalidateLeadPages(category);
 
   return { ok: true, id: data.id };
 }
 
 export async function updateLeadAction(formData: FormData) {
-  const profile = await requireAuth();
+  await requireAuth();
 
   const id = cleanText(formData.get("id"));
+  const category = getCategory(formData);
 
   if (!id) return { ok: false, error: "ID가 없습니다." };
 
   const payload: any = {
+    category,
     name: cleanText(formData.get("name")),
     phone: getRawText(formData, "phone"),
     contact_method: cleanText(formData.get("contact_method")) || null,
     insurance_company: cleanText(formData.get("insurance_company")) || null,
     status: cleanText(formData.get("status")) || "NEW",
+    assigned_to: null,
     manager_name: cleanText(formData.get("manager_name")) || null,
-  };
 
-  if (profile.role === "ADMIN") {
-    payload.assigned_to = cleanText(formData.get("assigned_to")) || null;
-  }
+    debt_amount: cleanText(formData.get("debt_amount")) || null,
+    job_income: cleanText(formData.get("job_income")) || null,
+    region: cleanText(formData.get("region")) || null,
+    case_type: cleanText(formData.get("case_type")) || null,
+    claim_amount: cleanText(formData.get("claim_amount")) || null,
+    opposing_party: cleanText(formData.get("opposing_party")) || null,
+    criminal_position:
+      cleanText(formData.get("criminal_position")) || null,
+    case_stage: cleanText(formData.get("case_stage")) || null,
+    case_summary: cleanText(formData.get("case_summary")) || null,
+  };
 
   const supabase = createSupabaseServerClient();
 
@@ -122,8 +189,7 @@ export async function updateLeadAction(formData: FormData) {
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/admin/leads");
-  revalidatePath(`/admin/leads/${id}`);
+  revalidateLeadPages(category, id);
 
   return { ok: true };
 }
@@ -135,7 +201,7 @@ export async function upsertLeadNoteAction(formData: FormData) {
   const content = cleanText(formData.get("content"));
 
   if (!leadId || !content) {
-    return { ok: false, error: "메모 내용을 입력해 주세요." };
+    return { ok: false, error: "메모 내용을 입력해주세요." };
   }
 
   const supabase = createSupabaseServerClient();
@@ -166,8 +232,7 @@ export async function upsertLeadNoteAction(formData: FormData) {
     return { ok: false, error: syncResult.error };
   }
 
-  revalidatePath("/admin/leads");
-  revalidatePath(`/admin/leads/${leadId}`);
+  revalidateLeadPages(undefined, leadId);
 
   return { ok: true };
 }
@@ -202,8 +267,7 @@ export async function deleteLeadNoteAction(formData: FormData) {
     return { ok: false, error: syncResult.error };
   }
 
-  revalidatePath("/admin/leads");
-  revalidatePath(`/admin/leads/${leadId}`);
+  revalidateLeadPages(undefined, leadId);
 
   return { ok: true };
 }
@@ -226,7 +290,7 @@ export async function deleteLeadAction(formData: FormData) {
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/admin/leads");
+  revalidateLeadPages();
 
   return { ok: true };
 }

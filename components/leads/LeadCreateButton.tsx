@@ -9,19 +9,39 @@ import {
   LEAD_STATUSES,
   LEAD_STATUS_LABEL,
 } from "@/lib/utils/constants";
+import type { LeadCategory } from "@/types";
 
 type LeadCreateButtonProps = {
   staffNames: string[];
+  category?: LeadCategory;
+  title?: string;
 };
 
-export function LeadCreateButton({ staffNames }: LeadCreateButtonProps) {
+const CATEGORY_LABEL: Record<LeadCategory, string> = {
+  traffic: "교통사고",
+  recovery: "개인회생",
+  civil: "민사",
+  criminal: "형사",
+  etc: "기타",
+};
+
+export function LeadCreateButton({
+  staffNames,
+  category = "traffic",
+  title,
+}: LeadCreateButtonProps) {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const categoryLabel = CATEGORY_LABEL[category] || "DB";
+  const modalTitle = title || `${categoryLabel} DB 추가`;
+
   function submit(formData: FormData) {
+    formData.set("category", category);
+
     startTransition(async () => {
       const result = await createLeadAction(formData);
 
@@ -54,25 +74,138 @@ export function LeadCreateButton({ staffNames }: LeadCreateButtonProps) {
         </p>
       ) : null}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="교통사고 DB 추가">
+      <Modal open={open} onClose={() => setOpen(false)} title={modalTitle}>
         <form action={submit} className="grid gap-3">
+          <input type="hidden" name="category" value={category} />
+
           <input className="input" name="name" placeholder="이름" />
 
           <input className="input" name="phone" placeholder="전화번호" />
 
-          <select className="input" name="contact_method">
-            {CONTACT_METHODS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+          {category === "traffic" ? (
+            <>
+              <select className="input" name="contact_method">
+                {CONTACT_METHODS.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
 
-          <input
-            className="input"
-            name="insurance_company"
-            placeholder="상대 보험사"
-          />
+              <input
+                className="input"
+                name="insurance_company"
+                placeholder="상대 보험사"
+              />
+            </>
+          ) : null}
+
+          {category === "recovery" ? (
+            <>
+              <input
+                className="input"
+                name="debt_amount"
+                placeholder="채무금액"
+              />
+
+              <input
+                className="input"
+                name="job_income"
+                placeholder="직업 / 소득"
+              />
+
+              <input className="input" name="region" placeholder="거주지역" />
+
+              <textarea
+                className="input min-h-24"
+                name="case_summary"
+                placeholder="상담 내용"
+              />
+            </>
+          ) : null}
+
+          {category === "civil" ? (
+            <>
+              <input
+                className="input"
+                name="case_type"
+                placeholder="사건유형"
+              />
+
+              <input
+                className="input"
+                name="claim_amount"
+                placeholder="청구금액"
+              />
+
+              <input
+                className="input"
+                name="opposing_party"
+                placeholder="상대방"
+              />
+
+              <textarea
+                className="input min-h-24"
+                name="case_summary"
+                placeholder="사건 내용"
+              />
+            </>
+          ) : null}
+
+          {category === "criminal" ? (
+            <>
+              <input
+                className="input"
+                name="case_type"
+                placeholder="사건유형"
+              />
+
+              <select className="input" name="criminal_position">
+                <option value="">피의자 / 피해자 선택</option>
+                <option value="피의자">피의자</option>
+                <option value="피해자">피해자</option>
+                <option value="참고인">참고인</option>
+                <option value="기타">기타</option>
+              </select>
+
+              <select className="input" name="case_stage">
+                <option value="">진행단계 선택</option>
+                <option value="경찰">경찰</option>
+                <option value="검찰">검찰</option>
+                <option value="법원">법원</option>
+                <option value="수사 전">수사 전</option>
+                <option value="기타">기타</option>
+              </select>
+
+              <input
+                className="input"
+                name="opposing_party"
+                placeholder="상대방 / 고소인 / 피고소인"
+              />
+
+              <textarea
+                className="input min-h-24"
+                name="case_summary"
+                placeholder="사건 내용"
+              />
+            </>
+          ) : null}
+
+          {category === "etc" ? (
+            <>
+              <input
+                className="input"
+                name="case_type"
+                placeholder="사건유형"
+              />
+
+              <textarea
+                className="input min-h-24"
+                name="case_summary"
+                placeholder="상담 내용"
+              />
+            </>
+          ) : null}
 
           <select className="input" name="status" defaultValue="NEW">
             {LEAD_STATUSES.map((value) => (
