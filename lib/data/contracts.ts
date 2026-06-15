@@ -129,15 +129,15 @@ async function getLeadIdsFromContractsByDate(start?: string, end?: string) {
 
   if (startDateTime && endDateTime) {
     q = q.or(
-      `contract_date.gte.${startDateTime},settlement_date.gte.${startDateTime},closed_at.gte.${startDateTime},completed_at.gte.${startDateTime}`
+      `contract_date.gte.${startDateTime},settlement_date.gte.${startDateTime},closed_at.gte.${startDateTime},completed_at.gte.${startDateTime},created_at.gte.${startDateTime}`
     );
   } else if (startDateTime) {
     q = q.or(
-      `contract_date.gte.${startDateTime},settlement_date.gte.${startDateTime},closed_at.gte.${startDateTime},completed_at.gte.${startDateTime}`
+      `contract_date.gte.${startDateTime},settlement_date.gte.${startDateTime},closed_at.gte.${startDateTime},completed_at.gte.${startDateTime},created_at.gte.${startDateTime}`
     );
   } else if (endDateTime) {
     q = q.or(
-      `contract_date.lte.${endDateTime},settlement_date.lte.${endDateTime},closed_at.lte.${endDateTime},completed_at.lte.${endDateTime}`
+      `contract_date.lte.${endDateTime},settlement_date.lte.${endDateTime},closed_at.lte.${endDateTime},completed_at.lte.${endDateTime},created_at.lte.${endDateTime}`
     );
   }
 
