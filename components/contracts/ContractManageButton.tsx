@@ -35,6 +35,8 @@ const CATEGORY_LABEL: Record<LeadCategory, string> = {
   etc: "기타",
 };
 
+const PRIMARY_MANAGER_OPTIONS = ["강이삭", "홍성원", "이중호", "장중원"];
+
 function getCategoryLabel(category?: LeadCategory | null) {
   return CATEGORY_LABEL[category || "traffic"] || "교통사고";
 }
@@ -113,7 +115,7 @@ export function ContractManageButton({
             defaultValue={contract?.primary_manager_name || ""}
           >
             <option value="">1차 담당자명 선택</option>
-            {staffNames.map((name) => (
+            {PRIMARY_MANAGER_OPTIONS.map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>
