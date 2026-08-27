@@ -51,13 +51,18 @@ export async function POST(req) {
     const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME || "Sheet1";
 
-    // 기존 시트 저장은 그대로 유지하고, 동일 DB를 보조 시트에도 복제 저장합니다.
-    // 환경변수를 별도로 지정하지 않아도 현재 지정된 "매일 DB" 시트를 사용합니다.
+    // 보조 시트는 배포 환경변수와 무관하게 아래 대상으로 고정합니다.
+    // 기존 시트 저장은 그대로 유지하면서 동일 DB를 "매일 DB"에도 복제합니다.
     const secondarySpreadsheetId =
-      process.env.GOOGLE_SHEETS_SPREADSHEET_ID_2 ||
       "12zSRuOTn7dzYrlqLZdVFkjHOc8O8bhASlXsUH54kZZA";
-    const secondarySheetName =
-      process.env.GOOGLE_SHEETS_SHEET_NAME_2 || "매일 DB";
+    const secondarySheetName = "매일 DB";
+
+    console.log("DUAL_SHEET_V3 route active", {
+      primarySpreadsheetId: spreadsheetId,
+      primarySheetName: sheetName,
+      secondarySpreadsheetId,
+      secondarySheetName,
+    });
 
     const missing = [];
 
@@ -117,37 +122,41 @@ export async function POST(req) {
       },
     });
 
-    // 보조 시트(매일 DB)에도 동일한 상담 DB를 복제 저장합니다.
+    // 보조 시트(매일 DB)에도 동일한 상담 DB를 반드시 한 번 더 저장합니다.
     // 보조 시트 오류가 발생해도 기존 시트 접수는 성공으로 유지합니다.
-    if (
-      secondarySpreadsheetId &&
-      (secondarySpreadsheetId !== spreadsheetId ||
-        secondarySheetName !== sheetName)
-    ) {
-      try {
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: secondarySpreadsheetId,
-          range: toSheetRange(secondarySheetName),
-          valueInputOption: "USER_ENTERED",
-          insertDataOption: "INSERT_ROWS",
-          requestBody: {
-            values: [row],
-          },
-        });
-        console.log("secondary google sheet append success:", {
-          spreadsheetId: secondarySpreadsheetId,
-          sheetName: secondarySheetName,
-        });
-      } catch (secondarySheetError) {
-        console.error("secondary google sheet append error:", {
-          message: secondarySheetError?.message,
-          code: secondarySheetError?.code,
-          details: secondarySheetError?.response?.data?.error || null,
-          spreadsheetId: secondarySpreadsheetId,
-          sheetName: secondarySheetName,
-          range: toSheetRange(secondarySheetName),
-        });
-      }
+    console.log("DUAL_SHEET_V3 secondary append start", {
+      spreadsheetId: secondarySpreadsheetId,
+      sheetName: secondarySheetName,
+      range: toSheetRange(secondarySheetName),
+    });
+
+    try {
+      const secondaryAppendResult = await sheets.spreadsheets.values.append({
+        spreadsheetId: secondarySpreadsheetId,
+        range: toSheetRange(secondarySheetName),
+        valueInputOption: "USER_ENTERED",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: {
+          values: [row],
+        },
+      });
+
+      console.log("DUAL_SHEET_V3 secondary append success", {
+        spreadsheetId: secondarySpreadsheetId,
+        sheetName: secondarySheetName,
+        updatedRange: secondaryAppendResult?.data?.updates?.updatedRange || null,
+        updatedRows: secondaryAppendResult?.data?.updates?.updatedRows || null,
+      });
+    } catch (secondarySheetError) {
+      console.error("DUAL_SHEET_V3 secondary append error", {
+        message: secondarySheetError?.message,
+        code: secondarySheetError?.code,
+        status: secondarySheetError?.response?.status || null,
+        details: secondarySheetError?.response?.data?.error || null,
+        spreadsheetId: secondarySpreadsheetId,
+        sheetName: secondarySheetName,
+        range: toSheetRange(secondarySheetName),
+      });
     }
 
     // 구글시트 저장 성공 후 Meta CAPI 전송
