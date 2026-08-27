@@ -12,6 +12,11 @@ function toMultiline(value) {
   return value || "";
 }
 
+function toSheetRange(sheetName) {
+  const escapedSheetName = String(sheetName || "Sheet1").replace(/'/g, "''");
+  return `'${escapedSheetName}'!A:H`;
+}
+
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -104,7 +109,7 @@ export async function POST(req) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheetName}!A:H`,
+      range: toSheetRange(sheetName),
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
       requestBody: {
@@ -122,15 +127,26 @@ export async function POST(req) {
       try {
         await sheets.spreadsheets.values.append({
           spreadsheetId: secondarySpreadsheetId,
-          range: `${secondarySheetName}!A:H`,
+          range: toSheetRange(secondarySheetName),
           valueInputOption: "USER_ENTERED",
           insertDataOption: "INSERT_ROWS",
           requestBody: {
             values: [row],
           },
         });
+        console.log("secondary google sheet append success:", {
+          spreadsheetId: secondarySpreadsheetId,
+          sheetName: secondarySheetName,
+        });
       } catch (secondarySheetError) {
-        console.error("secondary google sheet append error:", secondarySheetError);
+        console.error("secondary google sheet append error:", {
+          message: secondarySheetError?.message,
+          code: secondarySheetError?.code,
+          details: secondarySheetError?.response?.data?.error || null,
+          spreadsheetId: secondarySpreadsheetId,
+          sheetName: secondarySheetName,
+          range: toSheetRange(secondarySheetName),
+        });
       }
     }
 
